@@ -1,0 +1,12 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    container_name: everyday2-dev
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: bash
