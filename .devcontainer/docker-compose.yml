@@ -6,6 +6,9 @@ services:
     container_name: everyday2-dev
     volumes:
       - ..:/workspace
+      - /media:/media:ro
+      - /mnt:/mnt:ro
+      - /run/media:/run/media:ro
     working_dir: /workspace
     stdin_open: true
     tty: true

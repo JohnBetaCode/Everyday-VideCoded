@@ -1,0 +1,8 @@
+{
+  "name": "everyday2",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "ada",
+  "postCreateCommand": "mkdir -p /media /mnt /run/media"
+}

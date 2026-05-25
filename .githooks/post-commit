@@ -1,0 +1,52 @@
+#!/bin/bash
+set -e
+
+# Loop guard: skip if this is our own session-log auto-commit
+COMMIT_MSG=$(git log -1 --format="%s")
+if [[ "$COMMIT_MSG" == docs:\ update\ session\ log* ]]; then
+    exit 0
+fi
+
+# Skip silently if claude CLI is not available
+if ! command -v claude &>/dev/null; then
+    exit 0
+fi
+
+DATE=$(date +%Y-%m-%d)
+COMMIT_HASH=$(git log -1 --format="%h")
+FULL_MSG=$(git log -1 --format="%B")
+DIFF_STATS=$(git diff-tree --no-commit-id -r --stat HEAD)
+
+ENTRY=$(claude -p "Write a session log entry for a developer log file.
+
+Date: $DATE
+Commit: $COMMIT_HASH
+Commit message: $FULL_MSG
+
+Files changed:
+$DIFF_STATS
+
+Write ONLY the markdown block below — no preamble, no commentary. Use this exact format:
+
+### $DATE — <short title derived from the commit message>
+
+**Goal:** <one sentence inferred from the commit message>
+
+**Done:**
+- <bullet points based on changed files and commit message>
+
+**Decisions:**
+- <notable decisions, or 'N/A'>
+
+**Next:**
+- <logical next steps, or leave blank>
+
+---" 2>/dev/null)
+
+if [ -n "$ENTRY" ]; then
+    printf '\n%s\n' "$ENTRY" >> docs/session-log.md
+    git add docs/session-log.md
+    # --no-verify prevents re-triggering this hook on the auto-commit
+    git commit --no-verify -m "docs: update session log [$COMMIT_HASH]"
+    echo "Session log updated."
+fi
