@@ -66,3 +66,27 @@ A running log of each working session — what was built, why, and any decisions
 - Consider caching scanner results to avoid rescanning large libraries on every run
 
 ---
+
+### 2026-05-27 — External device browser, image fixes, dev env config
+
+**Goal:** Replace the root-based folder browser with a device picker and fix image rendering issues while cleaning up the dev environment setup.
+
+**Done:**
+- Folder browser now starts with a USB/HDD device picker (via `/media`, `/run/media`, `/proc/mounts`) instead of browsing from `/`
+- EXIF auto-rotation applied via `ImageOps.exif_transpose` to fix inverted images
+- CSS `max-height: 78vh` added to keep images in viewport regardless of window size
+- Sidebar stats replaced with compact HTML table (removed bulky `st.metric`)
+- Duplicate folder paths deduplicated before scanning
+- `configs/.env` with `DEFAULT_PHOTOS_PATH` loaded at startup via `python-dotenv`; `configs/.env.example` committed as template
+- Fixed Streamlit deprecations: `use_container_width` → `width=`, empty slider label
+- Added `.gitignore` and `docs/troubleshooting.md`
+
+**Decisions:**
+- Device picker scoped to `/media`, `/run/media`, and `/proc/mounts` rather than a full filesystem walk — keeps the UI focused on external/removable media
+- `.env` kept out of version control; `.env.example` committed as the canonical reference
+
+**Next:**
+- Add filtering/sorting options to the image browser
+- Consider caching scan results to speed up large folders
+
+---
