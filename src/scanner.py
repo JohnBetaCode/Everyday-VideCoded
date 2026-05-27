@@ -6,6 +6,64 @@ from pathlib import Path
 
 from PIL import ExifTags, Image
 
+_SYSTEM_MOUNTS = frozenset({
+    "/", "/boot", "/boot/efi", "/home", "/var", "/tmp", "/usr",
+    "/opt", "/srv", "/run", "/proc", "/sys", "/dev",
+})
+
+
+def get_external_devices() -> list[dict]:
+    """
+    Returns externally-mounted storage devices (USBs, external HDDs).
+    Each entry: {'name': str, 'mount_point': str, 'device': str | None}
+    """
+    devices: list[dict] = []
+    seen: set[str] = set()
+
+    def _add(name: str, mount_point: str, device: str | None = None) -> None:
+        if mount_point not in seen and Path(mount_point).is_dir():
+            seen.add(mount_point)
+            devices.append({"name": name, "mount_point": mount_point, "device": device})
+
+    # /media and /run/media — standard Linux auto-mount points for removable media
+    for base in (Path("/media"), Path("/run/media")):
+        if not base.is_dir():
+            continue
+        try:
+            for entry in base.iterdir():
+                if entry.is_dir():
+                    # /media/<volume>  or  /run/media/<user>/<volume>
+                    try:
+                        children = list(entry.iterdir())
+                    except PermissionError:
+                        children = []
+                    if children:
+                        for vol in children:
+                            if vol.is_dir():
+                                _add(vol.name, str(vol))
+                    else:
+                        _add(entry.name, str(entry))
+        except PermissionError:
+            pass
+
+    # /proc/mounts — catch anything mounted from a real block device that we missed
+    try:
+        with open("/proc/mounts") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                dev, mp = parts[0], parts[1]
+                if not any(dev.startswith(p) for p in ("/dev/sd", "/dev/nvme", "/dev/mmcblk", "/dev/vd")):
+                    continue
+                if mp in _SYSTEM_MOUNTS:
+                    continue
+                _add(Path(mp).name or dev, mp, dev)
+    except Exception:
+        pass
+
+    return devices
+
 IMAGE_EXTENSIONS = frozenset({
     ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp",
 })

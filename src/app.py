@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-import streamlit as st
-from PIL import Image
+from dotenv import load_dotenv
 
-from scanner import compute_stats, scan_folders
+load_dotenv(Path(__file__).parents[1] / "configs" / ".env")
+
+import streamlit as st
+from PIL import Image, ImageOps
+
+from scanner import compute_stats, get_external_devices, scan_folders
 
 st.set_page_config(
     page_title="Face Every Day",
@@ -17,27 +22,73 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown("""
+<style>
+[data-testid="stImage"] img {
+    max-height: 78vh !important;
+    object-fit: contain;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ── Folder browser helper ─────────────────────────────────────────────────────
 
 def _render_folder_browser() -> None:
     """
-    Renders an in-sidebar folder browser.
-    Navigates the container filesystem and appends the selected path
-    to st.session_state.folder_paths_text, then closes itself.
+    Two-mode sidebar browser:
+      "devices" — lists detected external storage (USB / HDD)
+      "browse"  — navigates within the selected device's directory tree
     """
+    mode = st.session_state.get("fb_mode", "devices")
+
+    if mode == "devices":
+        _render_device_picker()
+    else:
+        _render_dir_browser()
+
+
+def _render_device_picker() -> None:
+    st.markdown("**External Devices**")
+    devices = get_external_devices()
+
+    if not devices:
+        st.info("No external devices detected.")
+        st.caption("Connect a USB drive or external HDD, then click Browse again.")
+    else:
+        for dev in devices:
+            label = f"💾 {dev['name']}"
+            if dev["device"]:
+                label += f"  —  `{dev['device']}`"
+            if st.button(label, key=f"dev_{dev['mount_point']}", width="stretch"):
+                st.session_state.fb_cwd = dev["mount_point"]
+                st.session_state.fb_mode = "browse"
+                st.rerun()
+            st.caption(dev["mount_point"])
+
+    st.divider()
+    if st.button("✗ Cancel", width="stretch"):
+        st.session_state.fb_open = False
+        st.rerun()
+
+
+def _render_dir_browser() -> None:
     cwd = Path(st.session_state.fb_cwd)
 
     st.markdown("**Browse folders**")
     st.caption(f"`{cwd}`")
 
-    # Go up
-    if cwd.parent != cwd:
-        if st.button("⬆ Go up", key="fb_up", use_container_width=True):
-            st.session_state.fb_cwd = str(cwd.parent)
+    col_up, col_dev = st.columns(2)
+    with col_dev:
+        if st.button("⬅ Devices", width="stretch"):
+            st.session_state.fb_mode = "devices"
             st.rerun()
+    with col_up:
+        if cwd.parent != cwd:
+            if st.button("⬆ Go up", key="fb_up", width="stretch"):
+                st.session_state.fb_cwd = str(cwd.parent)
+                st.rerun()
 
-    # List subdirectories
     try:
         subdirs = sorted(
             [d for d in cwd.iterdir() if d.is_dir() and not d.name.startswith(".")],
@@ -47,8 +98,8 @@ def _render_folder_browser() -> None:
         st.warning("Permission denied.")
         subdirs = []
     except FileNotFoundError:
-        st.warning("Directory not found — resetting to /.")
-        st.session_state.fb_cwd = "/"
+        st.warning("Directory not found — returning to device list.")
+        st.session_state.fb_mode = "devices"
         st.rerun()
         return
 
@@ -58,14 +109,14 @@ def _render_folder_browser() -> None:
         if len(subdirs) > 30:
             st.caption(f"Showing first 30 of {len(subdirs)} folders.")
         for d in subdirs[:30]:
-            if st.button(f"📂 {d.name}", key=f"fb_{d}", use_container_width=True):
+            if st.button(f"📂 {d.name}", key=f"fb_{d}", width="stretch"):
                 st.session_state.fb_cwd = str(d)
                 st.rerun()
 
     st.divider()
     col_sel, col_cancel = st.columns(2)
     with col_sel:
-        if st.button("✓ Select", type="primary", use_container_width=True):
+        if st.button("✓ Select", type="primary", width="stretch"):
             existing = st.session_state.folder_paths_text.strip()
             st.session_state.folder_paths_text = (
                 existing + ("\n" if existing else "") + str(cwd)
@@ -73,7 +124,7 @@ def _render_folder_browser() -> None:
             st.session_state.fb_open = False
             st.rerun()
     with col_cancel:
-        if st.button("✗ Cancel", use_container_width=True):
+        if st.button("✗ Cancel", width="stretch"):
             st.session_state.fb_open = False
             st.rerun()
 
@@ -87,11 +138,13 @@ with st.sidebar:
 
     # Session state init
     if "folder_paths_text" not in st.session_state:
-        st.session_state.folder_paths_text = ""
+        st.session_state.folder_paths_text = os.environ.get("DEFAULT_PHOTOS_PATH", "")
     if "fb_open" not in st.session_state:
         st.session_state.fb_open = False
     if "fb_cwd" not in st.session_state:
         st.session_state.fb_cwd = "/"
+    if "fb_mode" not in st.session_state:
+        st.session_state.fb_mode = "devices"
 
     st.text_area(
         "Folder path(s)",
@@ -103,13 +156,13 @@ with st.sidebar:
 
     col_browse, col_load = st.columns([1, 2])
     with col_browse:
-        if st.button("Browse…", use_container_width=True):
+        if st.button("Browse…", width="stretch"):
             st.session_state.fb_open = True
-            st.session_state.fb_cwd = "/"
+            st.session_state.fb_mode = "devices"
             st.rerun()
     with col_load:
         load_clicked = st.button(
-            "Load Images", use_container_width=True, type="primary"
+            "Load Images", width="stretch", type="primary"
         )
 
     # Folder browser panel
@@ -119,9 +172,9 @@ with st.sidebar:
 
     # Load logic
     if load_clicked:
-        paths = [
-            p for p in st.session_state.folder_paths_text.splitlines() if p.strip()
-        ]
+        paths = list(dict.fromkeys(
+            p.strip() for p in st.session_state.folder_paths_text.splitlines() if p.strip()
+        ))
         if paths:
             with st.spinner("Scanning folders…"):
                 images, corrupted = scan_folders(paths)
@@ -141,13 +194,16 @@ with st.sidebar:
         s = st.session_state.stats
         st.divider()
         st.markdown("#### Summary")
-        st.metric("Total images", s["total"])
-        st.metric("Oldest → Newest", f"{s['min_date']}  →  {s['max_date']}")
-        st.metric(
-            "Days covered",
-            f"{s['days_with_images']} / {s['total_span_days']}",
+        st.markdown(
+            f"<table style='width:100%;font-size:0.82rem;border-collapse:collapse;line-height:1.6'>"
+            f"<tr><td style='opacity:.6'>Total</td><td><b>{s['total']}</b> images</td></tr>"
+            f"<tr><td style='opacity:.6'>From</td><td><b>{s['min_date']}</b></td></tr>"
+            f"<tr><td style='opacity:.6'>To</td><td><b>{s['max_date']}</b></td></tr>"
+            f"<tr><td style='opacity:.6'>Days covered</td><td><b>{s['days_with_images']}</b> / {s['total_span_days']}</td></tr>"
+            f"<tr><td style='opacity:.6'>Missing</td><td><b>{s['missing_days']}</b> days</td></tr>"
+            f"</table>",
+            unsafe_allow_html=True,
         )
-        st.metric("Missing days (in span)", s["missing_days"])
 
         if st.session_state.get("corrupted"):
             st.warning(
@@ -160,12 +216,13 @@ with st.sidebar:
             label = f"{year}  —  {ys['coverage_pct']}% covered"
             with st.expander(label):
                 st.progress(ys["coverage_pct"] / 100)
-                col_a, col_b = st.columns(2)
-                col_a.metric("Images", ys["images"])
-                col_b.metric("Days covered", ys["days_with_images"])
-                st.metric(
-                    "Missing days",
-                    f"{ys['missing_days']} / {ys['total_year_days']}",
+                st.markdown(
+                    f"<small style='line-height:1.8'>"
+                    f"<b>{ys['images']}</b> images &nbsp;·&nbsp; "
+                    f"<b>{ys['days_with_images']}</b> days covered &nbsp;·&nbsp; "
+                    f"<b>{ys['missing_days']}</b> / {ys['total_year_days']} missing"
+                    f"</small>",
+                    unsafe_allow_html=True,
                 )
 
 
@@ -187,11 +244,11 @@ if "idx" not in st.session_state:
 col_prev, col_info, col_next = st.columns([1, 10, 1])
 
 with col_prev:
-    if st.button("◀", use_container_width=True, help="Previous image"):
+    if st.button("◀", width="stretch", help="Previous image"):
         st.session_state.idx = max(0, st.session_state.idx - 1)
 
 with col_next:
-    if st.button("▶", use_container_width=True, help="Next image"):
+    if st.button("▶", width="stretch", help="Next image"):
         st.session_state.idx = min(n - 1, st.session_state.idx + 1)
 
 with col_info:
@@ -205,12 +262,12 @@ with col_info:
         unsafe_allow_html=True,
     )
 
-st.slider("", 0, n - 1, key="idx", label_visibility="collapsed")
+st.slider("Image position", 0, n - 1, key="idx", label_visibility="collapsed")
 
 # ── Image display ─────────────────────────────────────────────────────────────
 
 try:
-    img = Image.open(img_info["path"])
-    st.image(img, use_container_width=True)
+    img = ImageOps.exif_transpose(Image.open(img_info["path"]))
+    st.image(img, width="stretch")
 except Exception as exc:
     st.error(f"Cannot display image: {exc}")
