@@ -4,5 +4,8 @@
   "service": "dev",
   "workspaceFolder": "/workspace",
   "remoteUser": "ada",
-  "postCreateCommand": "mkdir -p /media /mnt /run/media"
+  "postCreateCommand": "mkdir -p /media /mnt /run/media",
+  "containerEnv": {
+    "WAYLAND_DISPLAY": ""
+  }
 }

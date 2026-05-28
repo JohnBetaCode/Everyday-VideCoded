@@ -9,7 +9,20 @@ services:
       - /media:/media:ro
       - /mnt:/mnt:ro
       - /run/media:/run/media:ro
+      - u2net-cache:/home/ada/.u2net   # persist rembg model across rebuilds
     working_dir: /workspace
     stdin_open: true
     tty: true
     command: bash
+    # ── GPU support (requires nvidia-container-toolkit on the host) ──────────
+    # Remove the deploy block if you don't have an NVIDIA GPU.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  u2net-cache:

@@ -1,3 +1,6 @@
 streamlit>=1.35.0
 Pillow>=10.0.0
 python-dotenv>=1.0.0
+rembg[gpu]>=0.1.36
+mediapipe>=0.10.0
+numpy>=1.24.0

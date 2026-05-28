@@ -13,6 +13,7 @@ load_dotenv(Path(__file__).parents[1] / "configs" / ".env")
 import streamlit as st
 from PIL import Image, ImageOps
 
+from pipeline import OPERATIONS, run_pipeline
 from scanner import compute_stats, get_external_devices, scan_folders
 
 st.set_page_config(
@@ -225,6 +226,18 @@ with st.sidebar:
                     unsafe_allow_html=True,
                 )
 
+    # ── Pipeline panel ────────────────────────────────────────────────────────
+    if st.session_state.get("images"):
+        st.divider()
+        st.markdown("#### Pipeline")
+        enabled_ops = {
+            op["id"]
+            for op in OPERATIONS
+            if st.checkbox(op["label"], key=f"op_{op['id']}")
+        }
+    else:
+        enabled_ops = set()
+
 
 # ── Main area ─────────────────────────────────────────────────────────────────
 
@@ -268,6 +281,21 @@ st.slider("Image position", 0, n - 1, key="idx", label_visibility="collapsed")
 
 try:
     img = ImageOps.exif_transpose(Image.open(img_info["path"]))
-    st.image(img, width="stretch")
 except Exception as exc:
-    st.error(f"Cannot display image: {exc}")
+    st.error(f"Cannot open image: {exc}")
+    st.stop()
+
+col_orig, col_proc = st.columns(2)
+
+with col_orig:
+    st.image(img, width="stretch")
+    st.caption("Original")
+
+with col_proc:
+    try:
+        with st.spinner("Running pipeline…"):
+            result = run_pipeline(img.copy(), enabled_ops)
+        st.image(result, width="stretch")
+    except Exception as exc:
+        st.error(f"Pipeline error: {exc}")
+    st.caption("Processed")
