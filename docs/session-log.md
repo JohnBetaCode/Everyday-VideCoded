@@ -120,3 +120,32 @@ A running log of each working session — what was built, why, and any decisions
 - Filename date parsing (third fallback after EXIF and mtime)
 
 ---
+
+### 2026-05-28 — Face alignment op, GPU container, config polish
+
+**Goal:** Add a face alignment pipeline operation using MediaPipe FaceLandmarker and harden the GPU container environment for Python 3.12 compatibility.
+
+**Done:**
+- Added Op 3 · Align Face: MediaPipe FaceLandmarker (Tasks API) detects iris landmarks 468/473, rotates image to level eyes, translates face centre to 50%/40% of frame
+- Added pipeline spinner in processed panel while ops run
+- Moved Original/Processed captions below images
+- Added `BLUR_RADIUS` env var for configurable background blur strength
+- Added MIT LICENSE
+- Switched base image to `nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04` to satisfy `onnxruntime-gpu` dependency on `libcublasLt.so.12`
+- Added Python venv at `/opt/venv` to avoid `distutils`/pip conflicts
+- Added system libs required by MediaPipe: `libgl1`, `libglib2.0-0`, `libgles2`, `libegl1`, `libglx0`
+- Fixed `/home/ada/.u2net` root ownership via `mkdir` + `chown` in Dockerfile
+- Fixed devcontainer Wayland socket mount error using `containerEnv` override
+- Migrated from `mp.solutions` to Tasks API (absent on Python 3.12 / MediaPipe 0.10+)
+- Updated README, troubleshooting guide, project-context, and session log
+
+**Decisions:**
+- Used MediaPipe Tasks API instead of `mp.solutions` because the latter is unavailable on Python 3.12 with MediaPipe 0.10+
+- Chose CUDA 12.3.2 cudnn9 runtime image to provide the exact shared libraries `onnxruntime-gpu` requires without pulling in the full CUDA toolkit
+
+**Next:**
+- Add Op 4 or further pipeline stages (e.g. skin tone normalisation, sharpening)
+- Validate GPU pipeline end-to-end in the devcontainer with a real NVIDIA device
+- Consider caching the MediaPipe model download in the Docker image layer
+
+---
