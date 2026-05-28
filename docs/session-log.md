@@ -120,17 +120,3 @@ A running log of each working session — what was built, why, and any decisions
 - Filename date parsing (third fallback after EXIF and mtime)
 
 ---
-
-### 2026-05-28 — Remove duplicate session log entry from post-commit hook
-
-**Goal:** Fix the post-commit hook that was inserting duplicate entries into the session log.
-
-**Done:**
-- Removed 29 lines of duplicate content from `docs/session-log.md`
-
-**Decisions:**
-- N/A
-
-**Next:**
-
----
