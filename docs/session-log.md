@@ -186,3 +186,22 @@ A running log of each working session — what was built, why, and any decisions
 **Next:**
 
 ---
+
+### 2026-05-29 — Parallel export with ThreadPoolExecutor
+
+**Goal:** Speed up image exports by processing files concurrently using a thread pool.
+
+**Done:**
+- Added `EXPORT_WORKERS` env var (default 4) to control thread pool size (`configs/.env.example`)
+- Refactored `src/app.py` to dispatch export tasks via `ThreadPoolExecutor` with `as_completed()` for progress bar updates on the main thread
+- Added `_detect_lock` in `src/pipeline.py` to serialize `MediaPipe FaceLandmarker.detect()` calls against the shared module-level instance
+
+**Decisions:**
+- Used threads (not processes) because rembg/ONNX and Pillow release the GIL, giving true parallelism without the overhead of multiprocessing
+- Serialized MediaPipe detection with a lock rather than instantiating per-thread, avoiding model reload cost
+
+**Next:**
+- Benchmark throughput gains at various `EXPORT_WORKERS` values to find practical ceiling
+- Consider per-thread MediaPipe instances if the detect lock becomes a bottleneck
+
+---
