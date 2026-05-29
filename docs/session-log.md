@@ -215,3 +215,23 @@ A running log of each working session — what was built, why, and any decisions
 - Continue feature work tracked in project-context
 
 ---
+
+### 2026-05-29 — Frame naming, export sort order, and folder organisation advice
+
+**Goal:** Add zero-padded `frame_NNNN` export naming, a configurable sort order for frame numbering, and README guidance on keeping mixed-camera batches in separate subfolders.
+
+**Done:**
+- Renamed exported images to `frame_0001.ext`, `frame_0002.ext`, … with zero-padding scoped per source folder (`src/app.py`)
+- Added `EXPORT_SORT` env var supporting `name`, `date_created` (EXIF), and `date_modified` (mtime) (`configs/.env.example`, `src/app.py`)
+- Added folder organisation section to README advising users to segregate camera/phone batches to avoid resolution and aspect-ratio mismatches during video merging (`README.md`)
+- Updated usage docs to document the new sort option (`docs/usage.md`)
+
+**Decisions:**
+- Zero-padding is per source folder rather than global, preserving locality of numbering across independent input directories
+- `name` chosen as the default sort order as the safest fallback when EXIF data may be absent
+
+**Next:**
+- Validate EXIF date extraction edge cases (missing tags, corrupted metadata)
+- Consider exposing a `--sort` CLI flag as an alternative to the env var
+
+---
