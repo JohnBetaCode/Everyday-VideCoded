@@ -1,8 +1,12 @@
-# everyday2
+# Everyday Video Maker v2.0
 
 > A "face every day" maker — browse years of daily self-portraits, align faces automatically, and export a timelapse that shows how you change over time.
 
 Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode/Face-every-day-maker) with a proper web GUI, GPU-accelerated CV pipeline, and a clean dev container.
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/43115782/121791980-28dca500-cbb5-11eb-99cf-2a2a2a63730f.jpg" width="1200"/>
+</p>
 
 ---
 
@@ -22,6 +26,9 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
 ## About
 
 **everyday2** loads one or more folders of daily self-portrait photos, sorts them by date (EXIF → mtime fallback), and lets you browse them with date statistics and a real-time CV pipeline. The pipeline operations — grayscale, background blur, face alignment, face zoom — stack in order and render side-by-side with the original. Processed images can be batch-exported with original filenames and dates preserved. The end goal is to produce an aligned timelapse video showing personal change over months and years.
+
+[<img src="https://user-images.githubusercontent.com/43115782/121792040-f7180e00-cbb5-11eb-9722-5200d20b8169.gif" width="300">]()| [<img src="https://user-images.githubusercontent.com/43115782/121792067-38a8b900-cbb6-11eb-882e-c2ae489e46af.gif" width="300">]()| [<img src="https://user-images.githubusercontent.com/43115782/121792038-f4b5b400-cbb5-11eb-8700-3cf72b7d07e5.gif" width="300">]()
+
 
 ---
 
