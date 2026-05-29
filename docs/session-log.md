@@ -120,3 +120,23 @@ A running log of each working session — what was built, why, and any decisions
 - Filename date parsing (third fallback after EXIF and mtime)
 
 ---
+
+### 2026-05-29 — Zoom face pipeline op and configurable face position env vars
+
+**Goal:** Add a zoom-face pipeline operation that scales the image to a target inter-ocular distance ratio, and expose env vars for controlling face placement.
+
+**Done:**
+- Added op 4 · Zoom face to `src/pipeline.py`, scaling images so inter-ocular distance matches `FACE_ZOOM_RATIO` (default 0.10) fraction of frame width
+- Extracted shared `_detect_iris()` helper reused by both align and zoom ops
+- Added `FACE_ALIGN_X` and `FACE_ALIGN_Y` env vars to control face position in the frame
+- Updated `configs/.env.example` with new env var documentation
+
+**Decisions:**
+- Inter-ocular distance expressed as a fraction of frame width (not pixels) to stay resolution-independent
+- Shared iris detection logic extracted into a helper rather than duplicated across ops
+
+**Next:**
+- Consider op 5 for additional face normalization steps (expression, lighting)
+- Evaluate whether zoom and align ops should be composable in a single pass
+
+---
