@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -175,39 +176,56 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
 
 # ── Export helper ────────────────────────────────────────────────────────────
 
+def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: Path) -> tuple[str, str]:
+    src = Path(entry["path"])
+    try:
+        with Image.open(src) as orig:
+            orig.load()
+            frame = ImageOps.exif_transpose(orig).copy()
+            exif_bytes = frame.info.get("exif", b"")
+        result = run_pipeline(frame, enabled_ops, op_params)
+        result = _draw_date(result, entry["date"])
+        dest = out_dir / src.name
+        try:
+            result.save(dest, exif=exif_bytes)
+        except TypeError:
+            result.save(dest)
+        os.utime(dest, (entry["date"].timestamp(),) * 2)
+        return "exported", ""
+    except FaceNotFoundError:
+        return "skipped", ""
+    except Exception as exc:
+        return "error", f"Could not export {src.name}: {exc}"
+
+
 def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     total = len(images)
     exported = skipped = errors = 0
+    warnings: list[str] = []
     progress = st.progress(0, text="Exporting…")
 
-    for i, entry in enumerate(images):
-        src = Path(entry["path"])
-        try:
-            with Image.open(src) as orig:
-                orig.load()
-                frame = ImageOps.exif_transpose(orig).copy()
-                exif_bytes = frame.info.get("exif", b"")
-            result = run_pipeline(frame, enabled_ops, op_params)
-            result = _draw_date(result, entry["date"])
-            dest = out_dir / src.name
-            try:
-                result.save(dest, exif=exif_bytes)
-            except TypeError:
-                result.save(dest)
-            ts = entry["date"].timestamp()
-            os.utime(dest, (ts, ts))
-            exported += 1
-        except FaceNotFoundError:
-            skipped += 1
-        except Exception as exc:
-            errors += 1
-            st.warning(f"Could not export {src.name}: {exc}")
-        pct = int((i + 1) / total * 100)
-        progress.progress((i + 1) / total, text=f"Exporting {i + 1} / {total} ({pct}%)…")
+    workers = min(int(os.environ.get("EXPORT_WORKERS", "4")), total)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(_process_one, entry, enabled_ops, op_params, out_dir): entry
+                   for entry in images}
+        for i, future in enumerate(as_completed(futures)):
+            status, msg = future.result()
+            if status == "exported":
+                exported += 1
+            elif status == "skipped":
+                skipped += 1
+            else:
+                errors += 1
+                if msg:
+                    warnings.append(msg)
+            pct = int((i + 1) / total * 100)
+            progress.progress((i + 1) / total, text=f"Exporting {i + 1} / {total} ({pct}%)…")
 
     progress.empty()
-    parts = [f"Exported **{exported}** image(s) to `tmp/`"]
+    for w in warnings:
+        st.warning(w)
+    parts = [f"Exported **{exported}** image(s) to `{out_dir}`"]
     if skipped:
         parts.append(f"{skipped} skipped (no face detected)")
     if errors:

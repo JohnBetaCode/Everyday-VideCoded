@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import os
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -34,6 +35,7 @@ def _load_face_landmarker() -> mp_vision.FaceLandmarker:
 
 # Initialise once at import time — landmarker startup is expensive
 _face_landmarker = _load_face_landmarker()
+_detect_lock = threading.Lock()
 
 
 def _grayscale(img: Image.Image) -> Image.Image:
@@ -53,7 +55,8 @@ def _detect_iris(img: Image.Image) -> tuple[float, float, float, float] | None:
     arr = np.array(img.convert("RGB"))
     h, w = arr.shape[:2]
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=arr)
-    result = _face_landmarker.detect(mp_image)
+    with _detect_lock:
+        result = _face_landmarker.detect(mp_image)
     if not result.face_landmarks:
         return None
     def _bbox_area(lm):
