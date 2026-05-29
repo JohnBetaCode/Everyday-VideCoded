@@ -199,56 +199,26 @@ A running log of each working session — what was built, why, and any decisions
 
 ---
 
-### 2026-05-29 — Consolidate session logs and sync docs
+### 2026-05-29 — Frame naming, sort order UI, and video polish
 
-**Goal:** Consolidate six small session-log entries into one and bring project-context and usage docs up to date with recent feature work.
-
-**Done:**
-- Condensed `docs/session-log.md` from multiple small entries into a single consolidated entry (net −96 lines)
-- Updated `docs/project-context.md` with parallel export, folder-based output, per-folder video, session reset behaviour, and new key decisions
-- Updated `docs/usage.md` to document session reset behaviour
-
-**Decisions:**
-- Prefer consolidated session-log entries over many small incremental ones to keep the log readable
-
-**Next:**
-- Continue feature work tracked in project-context
-
----
-
-### 2026-05-29 — Frame naming, export sort order, and folder organisation advice
-
-**Goal:** Add zero-padded `frame_NNNN` export naming, a configurable sort order for frame numbering, and README guidance on keeping mixed-camera batches in separate subfolders.
+**Goal:** Give exported frames consistent sequential names, expose sort order as a GUI control, and confirm video creation uses the correct frame order and overwrites existing files.
 
 **Done:**
-- Renamed exported images to `frame_0001.ext`, `frame_0002.ext`, … with zero-padding scoped per source folder (`src/app.py`)
-- Added `EXPORT_SORT` env var supporting `name`, `date_created` (EXIF), and `date_modified` (mtime) (`configs/.env.example`, `src/app.py`)
-- Added folder organisation section to README advising users to segregate camera/phone batches to avoid resolution and aspect-ratio mismatches during video merging (`README.md`)
-- Updated usage docs to document the new sort option (`docs/usage.md`)
+- Exported frames renamed to `frame_0001.ext`, `frame_0002.ext` … (zero-padded, per source folder)
+- Added **Frame order** selectbox in the sidebar above Export all: `Filename (A→Z)` / `Date created` / `Date modified`; default seeded from `EXPORT_SORT` env var
+- `EXPORT_SORT` added to `configs/.env.example`
+- Video creation already sorts frames A→Z by filename — `frame_0001`, `frame_0002` … are naturally ordered correctly
+- Both per-folder and merge ffmpeg calls already carry `-y` — existing videos are overwritten silently
+- Added folder organisation section to README advising users to keep mixed-camera or mixed-phone batches in separate subfolders to avoid resolution/aspect-ratio mismatches in the merged video
+- Synced all docs with the day's work
 
 **Decisions:**
-- Zero-padding is per source folder rather than global, preserving locality of numbering across independent input directories
-- `name` chosen as the default sort order as the safest fallback when EXIF data may be absent
+- Zero-padding scoped per folder (not global) so each input directory has its own independent `frame_0001`
+- `name` (A→Z) as default sort order — safest fallback when EXIF may be absent or unreliable
+- GUI selectbox takes precedence over env var each session; env var sets the launch default
 
 **Next:**
-- Validate EXIF date extraction edge cases (missing tags, corrupted metadata)
-- Consider exposing a `--sort` CLI flag as an alternative to the env var
-
----
-
-### 2026-05-29 — Add Frame order selectbox to sidebar export panel
-
-**Goal:** Expose the `EXPORT_SORT` option as a GUI control in the sidebar so users can change frame export ordering without editing env vars.
-
-**Done:**
-- Added a selectbox to the sidebar export panel with three sort options: Filename A→Z, Date created, Date modified
-- Seeded the selectbox default value from the `EXPORT_SORT` environment variable
-- Positioned the control above the Export all button in `src/app.py`
-
-**Decisions:**
-- Defaulted to env var seeding so existing `EXPORT_SORT` configurations are respected without requiring UI interaction
-
-**Next:**
-- Consider persisting the user's in-session sort selection across page reloads
+- Filename-based date parsing (third fallback after EXIF and mtime)
+- Option to clean up intermediate per-folder video artifacts after merge
 
 ---

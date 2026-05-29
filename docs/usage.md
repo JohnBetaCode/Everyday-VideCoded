@@ -101,11 +101,13 @@ Click **⬇ Export all** at the bottom of the pipeline panel to process every lo
 
 - Output folder: `<EXPORT_PATH>/images/<source_folder>/` — images are grouped by their source folder name, keeping photos from different cameras or naming conventions isolated.
 - Frames are renamed `frame_0001.jpg`, `frame_0002.jpg` … (zero-padded, per folder). The sort order that determines the numbering is set via `EXPORT_SORT`:
-| `EXPORT_SORT` value | Order |
-|---------------------|-------|
-| `name` _(default)_ | Alphabetical by original filename (A→Z) |
-| `date_created` | Chronological by EXIF date (mtime fallback) |
-| `date_modified` | By file modification time |
+A **Frame order** selectbox appears in the sidebar above the Export button with three options (default seeded from `EXPORT_SORT` in `configs/.env`):
+
+| Option | `EXPORT_SORT` value | Order |
+|--------|---------------------|-------|
+| Filename (A→Z) | `name` _(default)_ | Alphabetical by original filename |
+| Date created | `date_created` | Chronological by EXIF date (mtime fallback) |
+| Date modified | `date_modified` | By file modification time |
 
 - EXIF data and file modification time are carried over from the original photo.
 - Each frame is stamped with its capture date (`YYYY-MM-DD`) at the bottom centre using a bold white font on a semi-transparent dark strip.

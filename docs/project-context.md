@@ -97,13 +97,16 @@ docs/
 - Batch export (`⬇ Export all` button in sidebar):
   - Runs all loaded images concurrently via `ThreadPoolExecutor` (`EXPORT_WORKERS`, default 10)
   - Saves to `EXPORT_PATH/images/<source_folder>/` — grouped by source folder name
+  - Frames named `frame_0001.ext`, `frame_0002.ext` … (zero-padded per folder)
+  - Sort order (frame numbering) selectable in GUI: Filename A→Z / Date created / Date modified; default from `EXPORT_SORT` env var
   - Preserves EXIF bytes and sets file mtime to original photo date
   - Images with no face detected are skipped, not exported
   - Progress bar shows `N / total (%)`
   - Each frame stamped with capture date at bottom centre (`_draw_date`); configurable via `DATE_*` env vars
 - Video creation (`🎬 Create video` button in sidebar):
-  - Builds one video per subfolder in `EXPORT_PATH/images/`; frames sorted A→Z by filename
+  - Builds one video per subfolder in `EXPORT_PATH/images/`; frames sorted A→Z by filename (`frame_0001`, `frame_0002` …)
   - Merges all per-folder videos into `EXPORT_PATH/VIDEO_NAME.VIDEO_EXTENSION` via ffmpeg concat stream copy
+  - Existing videos overwritten silently (`-y` flag)
   - Configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`
   - Shows warning if export folder has no subfolders; surfaces ffmpeg stderr on failure
 - Session management:
@@ -171,6 +174,9 @@ docs/
 | 2026-05-29 | Frames sorted A→Z by filename for video | More reliable and deterministic than mtime, which can vary across filesystems or after file copies |
 | 2026-05-29 | Browse "Select" replaces text area instead of appending | Appending caused silent accumulation of old paths, leading to unintended combined sessions on next Load |
 | 2026-05-29 | Staged `_folder_paths_next` key for text area reset | Streamlit forbids modifying a widget-bound key after the widget renders; staging key is consumed before the widget is instantiated on the next rerun |
+| 2026-05-29 | `frame_NNNN` naming scoped per folder | Each source folder has an independent sequence; avoids global numbering conflicts when multiple folders are loaded |
+| 2026-05-29 | `name` as default `EXPORT_SORT` | Safest fallback when EXIF may be absent or unreliable; A→Z on `frame_NNNN` names always gives correct video order |
+| 2026-05-29 | GUI selectbox for sort order seeds from env var | Env var sets the launch default; per-session override available without touching config files |
 
 ---
 
@@ -192,7 +198,8 @@ See `configs/.env.example` for the full list.
 | `FACE_ALIGN_X` | Horizontal target position of face centre, 0.0–1.0 (default: 0.5) |
 | `FACE_ALIGN_Y` | Vertical target position of face centre, 0.0–1.0 (default: 0.4) |
 | `FACE_ZOOM_RATIO` | Target inter-ocular distance as fraction of frame width (default: 0.25) |
-| `EXPORT_PATH` | Root export folder; images saved to `EXPORT_PATH/images/` (default: `tmp/`) |
+| `EXPORT_PATH` | Root export folder; images saved to `EXPORT_PATH/images/<folder>/` (default: `tmp/`) |
+| `EXPORT_SORT` | Frame numbering order: `name` (default) / `date_created` / `date_modified` |
 | `VIDEO_NAME` | Output video filename without extension (default: `timelapse`) |
 | `VIDEO_EXTENSION` | Video container format (default: `mp4`) |
 | `VIDEO_FPS` | Frames per second (default: `24`) |
