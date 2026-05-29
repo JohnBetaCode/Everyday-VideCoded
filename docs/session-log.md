@@ -171,3 +171,18 @@ A running log of each working session — what was built, why, and any decisions
 - Continue building on the video creation and date stamp features now that docs are current
 
 ---
+
+### 2026-05-29 — Polish README layout and preview image table
+
+**Goal:** Improve the visual structure and formatting of the README, focusing on the preview image table layout.
+
+**Done:**
+- Polished README layout with improved formatting and spacing
+- Restructured preview image table for better readability
+
+**Decisions:**
+- N/A
+
+**Next:**
+
+---
