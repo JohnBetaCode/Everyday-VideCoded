@@ -173,7 +173,19 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
 
 # ── Export helper ────────────────────────────────────────────────────────────
 
-def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: Path) -> tuple[str, str]:
+def _sorted_entries(entries: list[dict]) -> list[dict]:
+    sort = os.environ.get("EXPORT_SORT", "name").strip().lower()
+    if sort == "date_created":
+        return sorted(entries, key=lambda e: e["date"])
+    if sort == "date_modified":
+        return sorted(entries, key=lambda e: Path(e["path"]).stat().st_mtime)
+    return sorted(entries, key=lambda e: Path(e["path"]).name)
+
+
+def _process_one(
+    entry: dict, frame_idx: int, pad: int,
+    enabled_ops: set[str], op_params: dict, out_dir: Path,
+) -> tuple[str, str]:
     src = Path(entry["path"])
     dest_dir = out_dir / src.parent.name
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -184,7 +196,7 @@ def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: P
             exif_bytes = frame.info.get("exif", b"")
         result = run_pipeline(frame, enabled_ops, op_params)
         result = _draw_date(result, entry["date"])
-        dest = dest_dir / src.name
+        dest = dest_dir / f"frame_{frame_idx:0{pad}d}{src.suffix.lower()}"
         try:
             result.save(dest, exif=exif_bytes)
         except TypeError:
@@ -198,16 +210,32 @@ def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: P
 
 
 def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path) -> None:
+    from collections import defaultdict
     out_dir.mkdir(parents=True, exist_ok=True)
-    total = len(images)
+
+    # Group by source folder, sort within each group, assign frame numbers
+    by_folder: dict[str, list[dict]] = defaultdict(list)
+    for entry in images:
+        by_folder[Path(entry["path"]).parent.name].append(entry)
+
+    tasks: list[tuple[dict, int, int]] = []  # (entry, frame_idx, pad)
+    for entries in by_folder.values():
+        ordered = _sorted_entries(entries)
+        pad = max(4, len(str(len(ordered))))
+        for idx, entry in enumerate(ordered, 1):
+            tasks.append((entry, idx, pad))
+
+    total = len(tasks)
     exported = skipped = errors = 0
     warnings: list[str] = []
     progress = st.progress(0, text="Exporting…")
 
     workers = min(int(os.environ.get("EXPORT_WORKERS", "4")), total)
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {executor.submit(_process_one, entry, enabled_ops, op_params, out_dir): entry
-                   for entry in images}
+        futures = {
+            executor.submit(_process_one, entry, frame_idx, pad, enabled_ops, op_params, out_dir): entry
+            for entry, frame_idx, pad in tasks
+        }
         for i, future in enumerate(as_completed(futures)):
             status, msg = future.result()
             if status == "exported":

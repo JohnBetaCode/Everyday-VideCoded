@@ -58,9 +58,24 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
   - Each op exposes its parameters as **live sliders** seeded from env vars; changes apply instantly
   - If no face is detected a warning is shown and the processed frame is left empty
   - When multiple faces are present the largest (by landmark bounding box) is used
-- **Batch export** — processes all loaded images through the active pipeline and saves them to `EXPORT_PATH/images/`, preserving original filenames, EXIF, and file dates; each frame is stamped with its capture date at the bottom centre
-- **Video creation** — assembles exported frames into a video via ffmpeg; configurable FPS, codec, format, and output name
+- **Batch export** — processes all loaded images through the active pipeline, names them `frame_0001.jpg`, `frame_0002.jpg` … per folder (sort order configurable), stamps each frame with its capture date at the bottom centre
+- **Video creation** — one video per source subfolder, then merged into a final timelapse via ffmpeg
 - **GPU support** — NVIDIA GPU passthrough via `nvidia-container-toolkit`; CPU fallback for every op
+
+---
+
+## Folder organisation advice
+
+> **If photos across time were taken with different cameras, phones, or aspect ratios, keep them in separate subfolders and load each group independently.**
+>
+> For example, if you switched from iPhone to Android mid-2024, organise your archive as:
+> ```
+> photos/
+> ├── 2024_iphone/    ← Jan – Jun 2024
+> ├── 2024_android/   ← Jul – Dec 2024
+> └── 2025/
+> ```
+> Each subfolder is exported and encoded into its own video before being merged into the final timelapse. This prevents resolution mismatches, aspect-ratio jumps, and colour-profile inconsistencies from degrading the merged video.
 
 ---
 
@@ -139,7 +154,8 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | `FACE_ALIGN_X` | `0.5` | Horizontal target position of the face centre (0.0–1.0). `0.5` = centred. |
 | `FACE_ALIGN_Y` | `0.4` | Vertical target position of the face centre (0.0–1.0). `0.4` = slightly above centre. |
 | `FACE_ZOOM_RATIO` | `0.25` | Target inter-ocular distance as a fraction of frame width. Lower = zoom out (more body). |
-| `EXPORT_PATH` | `tmp/` | Root export folder; images go to `EXPORT_PATH/images/`. |
+| `EXPORT_PATH` | `tmp/` | Root export folder; images go to `EXPORT_PATH/images/<folder>/`. |
+| `EXPORT_SORT` | `name` | Frame ordering within each folder: `name` (A→Z), `date_created` (EXIF), `date_modified` (mtime). |
 | `VIDEO_NAME` | `timelapse` | Output video filename (without extension). |
 | `VIDEO_EXTENSION` | `mp4` | Video container format. |
 | `VIDEO_FPS` | `24` | Frames per second. |

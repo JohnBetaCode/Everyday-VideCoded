@@ -99,8 +99,14 @@ When multiple faces are detected the largest face (by landmark bounding box) is 
 
 Click **⬇ Export all** at the bottom of the pipeline panel to process every loaded image through the current pipeline settings and save the results.
 
-- Output folder: `<EXPORT_PATH>/images/<source_folder>/` — images are grouped by their source folder name. This keeps photos from different folders (which may use different date formats or naming conventions) isolated from each other.
-- Filenames are preserved from the source.
+- Output folder: `<EXPORT_PATH>/images/<source_folder>/` — images are grouped by their source folder name, keeping photos from different cameras or naming conventions isolated.
+- Frames are renamed `frame_0001.jpg`, `frame_0002.jpg` … (zero-padded, per folder). The sort order that determines the numbering is set via `EXPORT_SORT`:
+| `EXPORT_SORT` value | Order |
+|---------------------|-------|
+| `name` _(default)_ | Alphabetical by original filename (A→Z) |
+| `date_created` | Chronological by EXIF date (mtime fallback) |
+| `date_modified` | By file modification time |
+
 - EXIF data and file modification time are carried over from the original photo.
 - Each frame is stamped with its capture date (`YYYY-MM-DD`) at the bottom centre using a bold white font on a semi-transparent dark strip.
 - Images where no face is detected are skipped (not exported).
