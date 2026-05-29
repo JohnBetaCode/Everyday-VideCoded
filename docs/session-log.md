@@ -291,3 +291,18 @@ A running log of each working session — what was built, why, and any decisions
 - Continue backlog items tracked in `docs/project-context.md`
 
 ---
+
+### 2026-05-29 — Save exported images to images/ subfolder within export path
+
+**Goal:** Organise exported images into a dedicated `images/` subfolder inside the configured export directory.
+
+**Done:**
+- Updated `src/app.py` to write exported images to `<EXPORT_PATH>/images/` instead of directly into `<EXPORT_PATH>`
+
+**Decisions:**
+- N/A
+
+**Next:**
+- Consider creating additional subfolders (e.g. by date or batch) for larger exports
+
+---
