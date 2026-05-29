@@ -130,6 +130,46 @@ def _render_dir_browser() -> None:
             st.rerun()
 
 
+# ── Export helper ────────────────────────────────────────────────────────────
+
+def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    total = len(images)
+    exported = skipped = errors = 0
+    progress = st.progress(0, text="Exporting…")
+
+    for i, entry in enumerate(images):
+        src = Path(entry["path"])
+        try:
+            with Image.open(src) as orig:
+                orig.load()
+                exif_bytes = orig.info.get("exif", b"")
+                frame = ImageOps.exif_transpose(orig).copy()
+            result = run_pipeline(frame, enabled_ops, op_params)
+            dest = out_dir / src.name
+            try:
+                result.save(dest, exif=exif_bytes)
+            except TypeError:
+                result.save(dest)
+            ts = entry["date"].timestamp()
+            os.utime(dest, (ts, ts))
+            exported += 1
+        except FaceNotFoundError:
+            skipped += 1
+        except Exception as exc:
+            errors += 1
+            st.warning(f"Could not export {src.name}: {exc}")
+        progress.progress((i + 1) / total, text=f"Exporting {i + 1} / {total}…")
+
+    progress.empty()
+    parts = [f"Exported **{exported}** image(s) to `tmp/`"]
+    if skipped:
+        parts.append(f"{skipped} skipped (no face detected)")
+    if errors:
+        parts.append(f"{errors} error(s)")
+    st.success(" · ".join(parts))
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
@@ -251,6 +291,15 @@ with st.sidebar:
                             step=p["step"],
                             key=f"param_{op['id']}_{p['key']}",
                         )
+
+        st.divider()
+        if st.button("⬇ Export all", width="stretch", type="primary"):
+            _export_all(
+                st.session_state.images,
+                enabled_ops,
+                op_params,
+                Path(__file__).parents[1] / "tmp",
+            )
     else:
         enabled_ops = set()
         op_params = {}
