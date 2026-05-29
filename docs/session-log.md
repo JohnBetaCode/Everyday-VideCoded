@@ -360,3 +360,22 @@ A running log of each working session — what was built, why, and any decisions
 - Host or link preview images externally if needed for public visibility
 
 ---
+
+### 2026-05-29 — Date stamp on exported frames
+
+**Goal:** Overlay the capture date on each exported frame as a readable watermark.
+
+**Done:**
+- Added date stamping to exported frames in `src/app.py` with white text and black stroke
+- Set font size proportional to image height for consistent appearance across resolutions
+- Added fallback to Pillow's built-in font when DejaVu is unavailable
+
+**Decisions:**
+- Bottom-center placement for the date stamp
+- Proportional font sizing rather than a fixed pixel size to handle varying image dimensions
+- Graceful degradation to built-in font keeps the feature working without system font dependencies
+
+**Next:**
+- Consider making stamp position or size configurable via UI or settings
+
+---
