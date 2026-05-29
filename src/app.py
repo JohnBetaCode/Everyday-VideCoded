@@ -339,6 +339,10 @@ with st.sidebar:
     if "_load_msg" in st.session_state:
         st.success(st.session_state.pop("_load_msg"))
 
+    # Apply staged path update before the widget is instantiated
+    if "_folder_paths_next" in st.session_state:
+        st.session_state.folder_paths_text = st.session_state.pop("_folder_paths_next")
+
     st.text_area(
         "Folder path(s)",
         key="folder_paths_text",
@@ -377,7 +381,7 @@ with st.sidebar:
                 st.session_state.corrupted = corrupted
                 st.session_state.stats = compute_stats(images)
                 st.session_state.idx = 0
-                st.session_state.folder_paths_text = "\n".join(paths)
+                st.session_state._folder_paths_next = "\n".join(paths)
                 msg = f"Loaded {len(images)} image(s)."
                 if prev:
                     msg += f" (previous session of {prev} images replaced)"
