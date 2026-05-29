@@ -344,3 +344,19 @@ A running log of each working session — what was built, why, and any decisions
 - Test video export end-to-end in the container environment
 
 ---
+
+### 2026-05-29 — README polish and image gitignore
+
+**Goal:** Update the README with a cleaner title and preview images while excluding image files from version control.
+
+**Done:**
+- Updated README title and added preview image references
+- Added image file patterns to `.gitignore` to keep binary assets out of the repo
+
+**Decisions:**
+- Preview images are referenced in the README but not tracked in git, keeping the repo lightweight
+
+**Next:**
+- Host or link preview images externally if needed for public visibility
+
+---
