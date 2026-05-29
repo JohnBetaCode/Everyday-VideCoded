@@ -17,9 +17,11 @@ This file is the single source of truth for the project's current state. Update 
 - [x] Navigate through images with prev/next buttons and a slider
 - [x] Show date range, days covered, and missing days per year
 - [x] Detect and skip corrupted images gracefully
+- [x] Face alignment (MediaPipe iris landmarks → rotation + translation)
+- [x] Face zoom (normalise face size across frames by inter-ocular distance)
+- [x] Side-by-side view: original image + processed result
+- [x] Batch export of processed images with original filenames and dates
 - [ ] Filename-based date parsing as a third fallback
-- [ ] Face detection and alignment (dlib or MediaPipe)
-- [ ] Side-by-side view: original image + processed result
 - [ ] Timelapse video export
 
 ---
@@ -60,6 +62,7 @@ configs/
 
 docs/
 ├── project-context.md   ← This file
+├── usage.md             ← Full usage guide
 ├── troubleshooting.md   ← Common issues and fixes
 └── session-log.md       ← Auto-updated by post-commit hook
 ```
@@ -82,10 +85,20 @@ docs/
 - CV pipeline (`src/pipeline.py`):
   - Side-by-side view: original (left) | processed (right)
   - Operations toggled via checkboxes in sidebar, applied in cascade order
+  - Each op with tunable params exposes live sliders seeded from env vars
   - Op 1 · Grayscale
-  - Op 2 · Blur background (rembg U2Net segmentation + Gaussian blur, GPU-accelerated; radius via `BLUR_RADIUS` env var)
-  - Op 3 · Align face (MediaPipe iris landmarks → rotation + translation; face centred at 50%/40% of frame)
+  - Op 2 · Blur background (rembg U2Net segmentation + Gaussian blur, GPU-accelerated; radius via `BLUR_RADIUS`)
+  - Op 3 · Align face (MediaPipe iris landmarks → rotation + translation; target position via `FACE_ALIGN_X` / `FACE_ALIGN_Y`)
+  - Op 4 · Zoom face (scale to normalise inter-ocular distance; ratio via `FACE_ZOOM_RATIO`)
+  - `FaceNotFoundError` raised when no face detected — warning shown, processed frame left empty
+  - When multiple faces detected, largest by landmark bounding box is used
   - Pipeline runs with a spinner in the processed panel while computing
+- Batch export (`⬇ Export all` button in sidebar):
+  - Runs all loaded images through current pipeline + slider params
+  - Saves to `EXPORT_PATH` (default `tmp/`) with original filename
+  - Preserves EXIF bytes and sets file mtime to original photo date
+  - Images with no face detected are skipped, not exported
+  - Progress bar shows `N / total (%)`
 
 ---
 
@@ -103,6 +116,7 @@ docs/
 - Filter images by year or custom date range in the GUI
 - Thumbnail strip / calendar heatmap view
 - Filename date parsing (e.g. `2024-03-15_selfie.jpg`, `IMG_20240315.jpg`)
+- Async/cached folder scanning for large collections
 
 ---
 
@@ -135,6 +149,10 @@ docs/
 | 2026-05-28 | MediaPipe Tasks API over dlib for face alignment | `mp.solutions` not available on Python 3.12 / mediapipe 0.10+; Tasks API works and has iris landmarks |
 | 2026-05-28 | Face landmarker model cached at `~/.cache/mediapipe/` | ~3 MB download on first use; not persisted across rebuilds (acceptable, unlike 170 MB U2Net) |
 | 2026-05-28 | `_face_landmarker` initialised at module level | Landmarker startup is expensive; reuse the same instance across all pipeline calls |
+| 2026-05-29 | Op params schema in OPERATIONS list | Single source of truth for slider metadata; app.py renders sliders generically without hardcoding per-op UI logic |
+| 2026-05-29 | `FaceNotFoundError` exception instead of silent passthrough | Makes missing detections visible; allows export to skip undetected images cleanly |
+| 2026-05-29 | `num_faces=10`, pick largest by bounding box | Handles group photos gracefully without requiring the caller to manage multi-face results |
+| 2026-05-29 | Read EXIF bytes from transposed image for export | Original EXIF retains the rotation tag; reading from the transposed copy gets orientation=1, preventing double-rotation in viewers |
 
 ---
 
@@ -153,6 +171,10 @@ See `configs/.env.example` for the full list.
 |----------|---------|
 | `DEFAULT_PHOTOS_PATH` | Folder path(s) pre-filled in the GUI on startup |
 | `BLUR_RADIUS` | Gaussian blur radius for the background blur op (default: 15) |
+| `FACE_ALIGN_X` | Horizontal target position of face centre, 0.0–1.0 (default: 0.5) |
+| `FACE_ALIGN_Y` | Vertical target position of face centre, 0.0–1.0 (default: 0.4) |
+| `FACE_ZOOM_RATIO` | Target inter-ocular distance as fraction of frame width (default: 0.25) |
+| `EXPORT_PATH` | Output folder for batch export (default: `tmp/` in project root) |
 
 ---
 

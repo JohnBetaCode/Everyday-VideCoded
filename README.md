@@ -21,7 +21,7 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
 
 ## About
 
-**everyday2** loads one or more folders of daily self-portrait photos, sorts them by date (EXIF → mtime fallback), and lets you browse them with date statistics and a real-time CV pipeline. The pipeline operations — grayscale, background blur, face alignment — stack in order and render side-by-side with the original. The end goal is to produce an aligned timelapse video showing personal change over months and years.
+**everyday2** loads one or more folders of daily self-portrait photos, sorts them by date (EXIF → mtime fallback), and lets you browse them with date statistics and a real-time CV pipeline. The pipeline operations — grayscale, background blur, face alignment, face zoom — stack in order and render side-by-side with the original. Processed images can be batch-exported with original filenames and dates preserved. The end goal is to produce an aligned timelapse video showing personal change over months and years.
 
 ---
 
@@ -36,7 +36,12 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
 - **CV pipeline** (side-by-side original vs. processed):
   - **1 · Grayscale** — luminance conversion, RGB output
   - **2 · Blur background** — rembg U2Net segmentation + Gaussian blur (portrait/bokeh effect); GPU-accelerated when an NVIDIA GPU is available
-  - **3 · Align face** — MediaPipe Face Mesh iris detection → rotation + translation so the face is centred and eyes are horizontal in every frame
+  - **3 · Align face** — MediaPipe iris landmarks → rotation + translation so the face is centred and eyes are horizontal in every frame
+  - **4 · Zoom face** — scales the image so the inter-ocular distance is a fixed fraction of frame width, normalising face size across photos
+  - Each op exposes its parameters as **live sliders** seeded from env vars; changes apply instantly
+  - If no face is detected a warning is shown and the processed frame is left empty
+  - When multiple faces are present the largest (by landmark bounding box) is used
+- **Batch export** — processes all loaded images through the active pipeline and saves them to a configurable output folder, preserving original filenames, EXIF, and file dates
 - **GPU support** — NVIDIA GPU passthrough via `nvidia-container-toolkit`; CPU fallback for every op
 
 ---
@@ -97,7 +102,10 @@ Then open [http://localhost:8501](http://localhost:8501).
 1. Type or paste a folder path in the sidebar, or use **Browse…** to pick from connected devices.
 2. Click **Load Images**.
 3. Use **◀ / ▶** or the slider to navigate.
-4. Toggle CV pipeline operations in the sidebar — processed result appears on the right.
+4. Toggle CV pipeline operations in the sidebar — processed result appears on the right. Adjust each op's parameters with the sliders that appear below its checkbox.
+5. Click **⬇ Export all** to save all processed images to the output folder.
+
+See [docs/usage.md](docs/usage.md) for a full walkthrough.
 
 ---
 
@@ -108,7 +116,11 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEFAULT_PHOTOS_PATH` | _(empty)_ | Folder path(s) pre-filled in the GUI on startup. Separate multiple paths with `\n`. |
-| `BLUR_RADIUS` | `15` | Gaussian blur radius for the background blur op (pixels). Higher = stronger blur. |
+| `BLUR_RADIUS` | `15` | Gaussian blur radius for the background blur op (pixels). |
+| `FACE_ALIGN_X` | `0.5` | Horizontal target position of the face centre (0.0–1.0). `0.5` = centred. |
+| `FACE_ALIGN_Y` | `0.4` | Vertical target position of the face centre (0.0–1.0). `0.4` = slightly above centre. |
+| `FACE_ZOOM_RATIO` | `0.25` | Target inter-ocular distance as a fraction of frame width. Lower = zoom out (more body). |
+| `EXPORT_PATH` | `tmp/` | Folder where exported images are saved. |
 
 ---
 
@@ -128,7 +140,8 @@ everyday2/
 ├── docs/
 │   ├── project-context.md   # Living project reference
 │   ├── session-log.md       # Auto-updated per-session work log
-│   └── troubleshooting.md   # Common issues and fixes
+│   ├── troubleshooting.md   # Common issues and fixes
+│   └── usage.md             # Full usage guide
 ├── scripts/
 │   └── install-hooks.sh     # Wires up .githooks/
 ├── src/
