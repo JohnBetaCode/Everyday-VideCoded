@@ -145,7 +145,7 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
     env_size = os.environ.get("DATE_FONT_SIZE")
     font_size = int(env_size) if env_size else max(24, h // 20)
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
     except OSError:
         font = ImageFont.load_default()
 
@@ -153,12 +153,23 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
     stroke_color = _hex_to_rgb(os.environ.get("DATE_STROKE_COLOR", "#000000"))
     stroke_width = int(os.environ.get("DATE_STROKE_WIDTH", "2"))
 
-    draw = ImageDraw.Draw(img)
-    bbox = draw.textbbox((0, 0), text, font=font)
+    # Measure text to position it
+    dummy = ImageDraw.Draw(img)
+    bbox = dummy.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    pad = max(12, h // 50)
     x = (w - tw) // 2
-    y = h - th - max(16, h // 40)
-    draw.text((x, y), text, font=font, fill=text_color, stroke_width=stroke_width, stroke_fill=stroke_color)
+    y = h - th - pad
+
+    # Semi-transparent dark background strip for readability in video
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(overlay).rectangle([0, y - pad, w, h], fill=(0, 0, 0, 160))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+
+    ImageDraw.Draw(img).text(
+        (x, y), text, font=font, fill=text_color,
+        stroke_width=stroke_width, stroke_fill=stroke_color,
+    )
     return img
 
 
@@ -178,7 +189,7 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
                 frame = ImageOps.exif_transpose(orig).copy()
                 exif_bytes = frame.info.get("exif", b"")
             result = run_pipeline(frame, enabled_ops, op_params)
-            _draw_date(result, entry["date"])
+            result = _draw_date(result, entry["date"])
             dest = out_dir / src.name
             try:
                 result.save(dest, exif=exif_bytes)
