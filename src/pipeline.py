@@ -28,7 +28,7 @@ def _load_face_landmarker() -> mp_vision.FaceLandmarker:
         _MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
         urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
     base_options = mp_python.BaseOptions(model_asset_path=str(_MODEL_PATH))
-    options = mp_vision.FaceLandmarkerOptions(base_options=base_options, num_faces=1)
+    options = mp_vision.FaceLandmarkerOptions(base_options=base_options, num_faces=10)
     return mp_vision.FaceLandmarker.create_from_options(options)
 
 
@@ -49,14 +49,18 @@ def _blur_background(img: Image.Image, params: dict | None = None) -> Image.Imag
 
 
 def _detect_iris(img: Image.Image) -> tuple[float, float, float, float] | None:
-    """Return (lx, ly, rx, ry) iris pixel coords, or None if no face detected."""
+    """Return (lx, ly, rx, ry) iris pixel coords for the largest detected face, or None."""
     arr = np.array(img.convert("RGB"))
     h, w = arr.shape[:2]
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=arr)
     result = _face_landmarker.detect(mp_image)
     if not result.face_landmarks:
         return None
-    lm = result.face_landmarks[0]
+    def _bbox_area(lm):
+        xs = [p.x for p in lm]
+        ys = [p.y for p in lm]
+        return (max(xs) - min(xs)) * (max(ys) - min(ys))
+    lm = max(result.face_landmarks, key=_bbox_area)
     return lm[468].x * w, lm[468].y * h, lm[473].x * w, lm[473].y * h
 
 
