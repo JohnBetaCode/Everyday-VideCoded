@@ -13,7 +13,7 @@ load_dotenv(Path(__file__).parents[1] / "configs" / ".env")
 import streamlit as st
 from PIL import Image, ImageOps
 
-from pipeline import OPERATIONS, run_pipeline
+from pipeline import OPERATIONS, FaceNotFoundError, run_pipeline
 from scanner import compute_stats, get_external_devices, scan_folders
 
 st.set_page_config(
@@ -230,13 +230,30 @@ with st.sidebar:
     if st.session_state.get("images"):
         st.divider()
         st.markdown("#### Pipeline")
-        enabled_ops = {
-            op["id"]
-            for op in OPERATIONS
-            if st.checkbox(op["label"], key=f"op_{op['id']}")
-        }
+        enabled_ops: set[str] = set()
+        op_params: dict[str, dict] = {}
+        for op in OPERATIONS:
+            if st.checkbox(op["label"], key=f"op_{op['id']}"):
+                enabled_ops.add(op["id"])
+                if op.get("params"):
+                    op_params[op["id"]] = {}
+                    for p in op["params"]:
+                        env_str = os.environ.get(p["env"])
+                        if env_str is not None:
+                            init = int(env_str) if p["type"] == "int" else float(env_str)
+                        else:
+                            init = p["default"]
+                        op_params[op["id"]][p["key"]] = st.slider(
+                            p["label"],
+                            min_value=p["min"],
+                            max_value=p["max"],
+                            value=init,
+                            step=p["step"],
+                            key=f"param_{op['id']}_{p['key']}",
+                        )
     else:
         enabled_ops = set()
+        op_params = {}
 
 
 # ── Main area ─────────────────────────────────────────────────────────────────
@@ -294,8 +311,10 @@ with col_orig:
 with col_proc:
     try:
         with st.spinner("Running pipeline…"):
-            result = run_pipeline(img.copy(), enabled_ops)
+            result = run_pipeline(img.copy(), enabled_ops, op_params)
         st.image(result, width="stretch")
+    except FaceNotFoundError:
+        st.warning("No face detected in this image.")
     except Exception as exc:
         st.error(f"Pipeline error: {exc}")
     st.caption("Processed")
