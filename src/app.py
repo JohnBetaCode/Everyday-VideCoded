@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parents[1] / "configs" / ".env")
 
 import streamlit as st
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from pipeline import OPERATIONS, FaceNotFoundError, run_pipeline
 from scanner import compute_stats, get_external_devices, scan_folders
@@ -131,6 +131,26 @@ def _render_dir_browser() -> None:
             st.rerun()
 
 
+# ── Date overlay helper ───────────────────────────────────────────────────────
+
+def _draw_date(img: Image.Image, dt) -> Image.Image:
+    w, h = img.size
+    text = dt.strftime("%Y-%m-%d")
+    font_size = max(24, h // 20)
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
+    except OSError:
+        font = ImageFont.load_default()
+
+    draw = ImageDraw.Draw(img)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    x = (w - tw) // 2
+    y = h - th - max(16, h // 40)
+    draw.text((x, y), text, font=font, fill=(255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0))
+    return img
+
+
 # ── Export helper ────────────────────────────────────────────────────────────
 
 def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path) -> None:
@@ -147,6 +167,7 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
                 frame = ImageOps.exif_transpose(orig).copy()
                 exif_bytes = frame.info.get("exif", b"")
             result = run_pipeline(frame, enabled_ops, op_params)
+            _draw_date(result, entry["date"])
             dest = out_dir / src.name
             try:
                 result.save(dest, exif=exif_bytes)
