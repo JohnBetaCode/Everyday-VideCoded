@@ -120,10 +120,7 @@ def _render_dir_browser() -> None:
     col_sel, col_cancel = st.columns(2)
     with col_sel:
         if st.button("✓ Select", type="primary", width="stretch"):
-            existing = st.session_state.folder_paths_text.strip()
-            st.session_state.folder_paths_text = (
-                existing + ("\n" if existing else "") + str(cwd)
-            )
+            st.session_state.folder_paths_text = str(cwd)
             st.session_state.fb_open = False
             st.rerun()
     with col_cancel:
@@ -339,6 +336,9 @@ with st.sidebar:
     if "fb_mode" not in st.session_state:
         st.session_state.fb_mode = "devices"
 
+    if "_load_msg" in st.session_state:
+        st.success(st.session_state.pop("_load_msg"))
+
     st.text_area(
         "Folder path(s)",
         key="folder_paths_text",
@@ -372,11 +372,17 @@ with st.sidebar:
             with st.spinner("Scanning folders…"):
                 images, corrupted = scan_folders(paths)
             if images:
+                prev = len(st.session_state.get("images") or [])
                 st.session_state.images = images
                 st.session_state.corrupted = corrupted
                 st.session_state.stats = compute_stats(images)
                 st.session_state.idx = 0
-                st.success(f"Loaded {len(images)} image(s).")
+                st.session_state.folder_paths_text = "\n".join(paths)
+                msg = f"Loaded {len(images)} image(s)."
+                if prev:
+                    msg += f" (previous session of {prev} images replaced)"
+                st.session_state._load_msg = msg
+                st.rerun()
             else:
                 st.warning("No readable images found in the given path(s).")
         else:
