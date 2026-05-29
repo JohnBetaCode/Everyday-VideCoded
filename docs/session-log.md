@@ -306,3 +306,25 @@ A running log of each working session — what was built, why, and any decisions
 - Consider creating additional subfolders (e.g. by date or batch) for larger exports
 
 ---
+
+### 2026-05-29 — Create video button using ffmpeg from exported images
+
+**Goal:** Add a "Create video" button to the pipeline panel that assembles exported images into a video using ffmpeg.
+
+**Done:**
+- Added "Create video" button below "Export all" in the pipeline panel (`src/app.py`)
+- Images in `EXPORT_PATH/images/` are sorted by mtime to preserve original photo date order
+- ffmpeg is invoked with a concat list; output is configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, and `VIDEO_CODEC` env vars
+- Added warning dialog when no images exist in the export folder
+- Surfaces ffmpeg stderr output if the command fails
+- Documented new env vars in `configs/.env.example`
+
+**Decisions:**
+- Sort by mtime rather than filename to reflect original capture order regardless of naming convention
+- Expose codec and FPS as env vars to avoid hardcoding format assumptions
+
+**Next:**
+- Consider a progress indicator for long ffmpeg runs
+- Add option to open the output video file after creation
+
+---
