@@ -235,3 +235,20 @@ A running log of each working session — what was built, why, and any decisions
 - Consider exposing a `--sort` CLI flag as an alternative to the env var
 
 ---
+
+### 2026-05-29 — Add Frame order selectbox to sidebar export panel
+
+**Goal:** Expose the `EXPORT_SORT` option as a GUI control in the sidebar so users can change frame export ordering without editing env vars.
+
+**Done:**
+- Added a selectbox to the sidebar export panel with three sort options: Filename A→Z, Date created, Date modified
+- Seeded the selectbox default value from the `EXPORT_SORT` environment variable
+- Positioned the control above the Export all button in `src/app.py`
+
+**Decisions:**
+- Defaulted to env var seeding so existing `EXPORT_SORT` configurations are respected without requiring UI interaction
+
+**Next:**
+- Consider persisting the user's in-session sort selection across page reloads
+
+---
