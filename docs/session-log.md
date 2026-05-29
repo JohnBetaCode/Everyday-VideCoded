@@ -229,3 +229,19 @@ A running log of each working session — what was built, why, and any decisions
 - Verify exported images render correctly in EXIF-aware viewers (e.g. macOS Preview, web browsers).
 
 ---
+
+### 2026-05-29 — Pick largest face in multi-face frames
+
+**Goal:** Ensure the most prominent subject is always selected when multiple faces appear in a photo.
+
+**Done:**
+- Raised `num_faces` from its previous limit to 10 to detect all candidates in a frame
+- Added logic in `src/pipeline.py` to select the face with the largest landmark bounding box
+
+**Decisions:**
+- Largest bounding box used as the prominence heuristic — closest/most prominent subject in group photos or accidental multi-face captures
+
+**Next:**
+- Consider fallback behavior when no faces are detected after raising the limit
+
+---
