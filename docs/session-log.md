@@ -140,3 +140,24 @@ A running log of each working session — what was built, why, and any decisions
 - Evaluate whether zoom and align ops should be composable in a single pass
 
 ---
+
+### 2026-05-29 — Pipeline param sliders and face-not-found warning
+
+**Goal:** Expose tunable pipeline parameters as interactive sidebar sliders and surface missing face detections as an explicit error instead of silent fallback.
+
+**Done:**
+- Added sidebar sliders for each pipeline op's tunable params (`BLUR_RADIUS`, `FACE_ALIGN_X/Y`, `FACE_ZOOM_RATIO`), seeded from env vars
+- Slider changes immediately rerun the pipeline on the current image
+- Introduced `FaceNotFoundError` so align/zoom ops signal missing detections cleanly
+- App shows a warning and leaves the processed frame empty on `FaceNotFoundError` instead of silently returning the original image
+- Updated `.env.example` to reflect new/changed env var names
+
+**Decisions:**
+- Env vars serve as defaults for sliders rather than hard-coded values, keeping configuration externally overridable
+- `FaceNotFoundError` as a distinct exception type (vs. returning `None` or a sentinel) makes failure explicit and avoids silent data corruption downstream
+
+**Next:**
+- Add sliders or controls for any remaining pipeline ops not yet parameterized
+- Consider persisting slider state across sessions
+
+---
