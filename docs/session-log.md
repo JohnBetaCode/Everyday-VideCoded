@@ -241,3 +241,20 @@ A running log of each working session — what was built, why, and any decisions
 - Verify output videos are correctly ordered end-to-end
 
 ---
+
+### 2026-05-29 — Fix: loading a new folder always starts a fresh session
+
+**Goal:** Ensure that browsing to a new folder replaces the current session instead of silently accumulating old paths.
+
+**Done:**
+- Modified `src/app.py` so the Browse "Select" action overwrites the text area rather than appending to it
+- Reset the text area to exactly the scanned paths after a successful load and trigger a clean page rerun
+- Added a user-facing message when a previous session is replaced
+
+**Decisions:**
+- Chose replace-over-append semantics to eliminate the silent accumulation bug; prior state is explicitly surfaced via a message rather than discarded invisibly
+
+**Next:**
+- Consider persisting session state across browser refreshes if stale-path confusion recurs
+
+---
