@@ -173,8 +173,7 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
 
 # ── Export helper ────────────────────────────────────────────────────────────
 
-def _sorted_entries(entries: list[dict]) -> list[dict]:
-    sort = os.environ.get("EXPORT_SORT", "name").strip().lower()
+def _sorted_entries(entries: list[dict], sort: str) -> list[dict]:
     if sort == "date_created":
         return sorted(entries, key=lambda e: e["date"])
     if sort == "date_modified":
@@ -209,7 +208,7 @@ def _process_one(
         return "error", f"Could not export {src.name}: {exc}"
 
 
-def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path) -> None:
+def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_dir: Path, sort: str = "name") -> None:
     from collections import defaultdict
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -220,7 +219,7 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
 
     tasks: list[tuple[dict, int, int]] = []  # (entry, frame_idx, pad)
     for entries in by_folder.values():
-        ordered = _sorted_entries(entries)
+        ordered = _sorted_entries(entries, sort)
         pad = max(4, len(str(len(ordered))))
         for idx, entry in enumerate(ordered, 1):
             tasks.append((entry, idx, pad))
@@ -484,8 +483,18 @@ with st.sidebar:
 
         st.divider()
         _export_dir = Path(os.environ.get("EXPORT_PATH", str(Path(__file__).parents[1] / "tmp"))) / "images"
+        _sort_options = {"Filename (A→Z)": "name", "Date created": "date_created", "Date modified": "date_modified"}
+        _sort_default = os.environ.get("EXPORT_SORT", "name")
+        _sort_default_label = next((k for k, v in _sort_options.items() if v == _sort_default), "Filename (A→Z)")
+        _sort_label = st.selectbox(
+            "Frame order",
+            options=list(_sort_options.keys()),
+            index=list(_sort_options.keys()).index(_sort_default_label),
+            key="export_sort",
+        )
+        _sort = _sort_options[_sort_label]
         if st.button("⬇ Export all", width="stretch", type="primary"):
-            _export_all(st.session_state.images, enabled_ops, op_params, _export_dir)
+            _export_all(st.session_state.images, enabled_ops, op_params, _export_dir, _sort)
         if st.button("🎬 Create video", width="stretch"):
             _create_video(_export_dir)
     else:
