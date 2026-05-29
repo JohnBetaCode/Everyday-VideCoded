@@ -22,7 +22,9 @@ Then open [http://localhost:8501](http://localhost:8501) in your browser.
 2. Alternatively, click **Browse…** to pick a folder from a connected USB drive or external HDD. The device picker auto-detects volumes mounted under `/media` and `/run/media`.
 3. Click **Load Images**. A spinner shows while the folders are being scanned.
 
-Once loaded, the sidebar shows the total image count and any corrupted files that were skipped.
+Once loaded, the sidebar shows the total image count and any corrupted files that were skipped. If images were already loaded, the previous session is replaced completely and a message confirms this.
+
+> **Note:** Browse **Select** always replaces the text area with the chosen folder — it does not append. Each Load is a clean session.
 
 Supported formats: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.tif`, `.webp`.
 

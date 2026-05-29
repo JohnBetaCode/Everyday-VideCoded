@@ -172,103 +172,27 @@ A running log of each working session — what was built, why, and any decisions
 
 ---
 
-### 2026-05-29 — Polish README layout and preview image table
+### 2026-05-29 — Parallel export, folder-based output, per-folder video, and session reset
 
-**Goal:** Improve the visual structure and formatting of the README, focusing on the preview image table layout.
+**Goal:** Speed up export with threads, organise output by source folder, generate per-folder videos that merge into a final timelapse, and fix session contamination when switching folders.
 
 **Done:**
-- Polished README layout with improved formatting and spacing
-- Restructured preview image table for better readability
+- **Parallel export**: `ThreadPoolExecutor` dispatches per-image work concurrently; `EXPORT_WORKERS` env var (default 10) controls pool size; `_detect_lock` in `pipeline.py` serialises the shared MediaPipe landmarker instance; progress updates via `as_completed()` on the main thread
+- **Folder-based export**: images saved to `EXPORT_PATH/images/<source_folder>/` — photos from different folders stay isolated, avoiding date-format mixing
+- **Per-folder video + merge**: `🎬 Create video` builds one video per subfolder (frames sorted A→Z by filename), then merges all into `EXPORT_PATH/VIDEO_NAME.EXT` using ffmpeg concat with stream copy (no re-encode)
+- **Fresh session on load**: Browse "Select" now replaces the text area instead of appending; after a successful load the text area resets to exactly the scanned paths and the page reruns; a message is shown when a previous session is replaced
+- **Streamlit staging fix**: `folder_paths_text` (widget-bound key) cannot be set after the widget renders — introduced `_folder_paths_next` staging key consumed before the widget is instantiated on the next rerun
 
 **Decisions:**
-- N/A
+- Threads over processes: rembg/ONNX and Pillow release the GIL, giving real parallelism without multiprocessing overhead
+- Source-folder grouping: avoids filename/date-format collisions between folders
+- ffmpeg `-c copy` for merge: stream copy preserves quality and is fast since all source videos share the same codec/settings
+- A→Z filename sort for video: more deterministic than mtime across filesystems and after file copies
+- Replace-over-append for Browse Select: appending was the root cause of unintentional combined sessions
 
 **Next:**
-
----
-
-### 2026-05-29 — Parallel export with ThreadPoolExecutor
-
-**Goal:** Speed up image exports by processing files concurrently using a thread pool.
-
-**Done:**
-- Added `EXPORT_WORKERS` env var (default 4) to control thread pool size (`configs/.env.example`)
-- Refactored `src/app.py` to dispatch export tasks via `ThreadPoolExecutor` with `as_completed()` for progress bar updates on the main thread
-- Added `_detect_lock` in `src/pipeline.py` to serialize `MediaPipe FaceLandmarker.detect()` calls against the shared module-level instance
-
-**Decisions:**
-- Used threads (not processes) because rembg/ONNX and Pillow release the GIL, giving true parallelism without the overhead of multiprocessing
-- Serialized MediaPipe detection with a lock rather than instantiating per-thread, avoiding model reload cost
-
-**Next:**
-- Benchmark throughput gains at various `EXPORT_WORKERS` values to find practical ceiling
-- Consider per-thread MediaPipe instances if the detect lock becomes a bottleneck
-
----
-
-### 2026-05-29 — Folder-based export and per-folder video creation
-
-**Goal:** Reorganize image export to preserve source folder structure and generate one video per subfolder before merging into the final timelapse.
-
-**Done:**
-- Images now export to `EXPORT_PATH/images/<source_folder>/` instead of a flat directory
-- Video creation builds one video per subfolder as an intermediate artifact (`EXPORT_PATH/<folder_name>.<ext>`)
-- Per-folder videos are merged into the final timelapse via ffmpeg concat with stream copy
-- Updated `docs/usage.md` to reflect new export path structure
-- Refactored `src/app.py` with ~80 lines of new logic for subfolder handling
-
-**Decisions:**
-- Used ffmpeg concat with stream copy (no re-encode) for merging per-folder videos to preserve quality and speed up processing
-- Per-folder intermediate videos are retained at `EXPORT_PATH/` alongside the final output
-
-**Next:**
-- Add cleanup option to remove intermediate per-folder video artifacts after merge
-- Consider progress reporting per subfolder during batch export
-
----
-
-### 2026-05-29 — Fix video frame sort order
-
-**Goal:** Ensure video frames are assembled in consistent alphabetical order rather than relying on filesystem modification times.
-
-**Done:**
-- Updated `src/app.py` to sort video frames by filename (A→Z) instead of mtime
-
-**Decisions:**
-- Filename-based sorting is more reliable and deterministic than mtime, which can vary across filesystems or after file copies
-
-**Next:**
-- Verify output videos are correctly ordered end-to-end
-
----
-
-### 2026-05-29 — Fix: loading a new folder always starts a fresh session
-
-**Goal:** Ensure that browsing to a new folder replaces the current session instead of silently accumulating old paths.
-
-**Done:**
-- Modified `src/app.py` so the Browse "Select" action overwrites the text area rather than appending to it
-- Reset the text area to exactly the scanned paths after a successful load and trigger a clean page rerun
-- Added a user-facing message when a previous session is replaced
-
-**Decisions:**
-- Chose replace-over-append semantics to eliminate the silent accumulation bug; prior state is explicitly surfaced via a message rather than discarded invisibly
-
-**Next:**
-- Consider persisting session state across browser refreshes if stale-path confusion recurs
-
----
-
-### 2026-05-29 — Fix widget-bound session state staging in Streamlit
-
-**Goal:** Prevent `StreamlitAPIException` caused by modifying a widget-bound session state key after the widget has already rendered in the same pass.
-
-**Done:**
-- Introduced a staging key (`_folder_paths_next`) in `src/app.py` that holds the pending folder paths update
-- Consumed the staging key before the `text_area` widget is created on the next rerun, avoiding the illegal same-pass mutation
-
-**Decisions:**
-- Used a dedicated staging key rather than deferring or restructuring the widget render order, keeping the fix minimal and localized to the affected state transition
+- Filename-based date parsing (third fallback after EXIF and mtime)
+- Option to clean up intermediate per-folder video artifacts after merge
 
 **Next:**
 - Monitor for similar widget-bound state mutation patterns elsewhere in the app

@@ -95,17 +95,20 @@ docs/
   - When multiple faces detected, largest by landmark bounding box is used
   - Pipeline runs with a spinner in the processed panel while computing
 - Batch export (`⬇ Export all` button in sidebar):
-  - Runs all loaded images through current pipeline + slider params
-  - Saves to `EXPORT_PATH/images/` with original filename
+  - Runs all loaded images concurrently via `ThreadPoolExecutor` (`EXPORT_WORKERS`, default 10)
+  - Saves to `EXPORT_PATH/images/<source_folder>/` — grouped by source folder name
   - Preserves EXIF bytes and sets file mtime to original photo date
   - Images with no face detected are skipped, not exported
   - Progress bar shows `N / total (%)`
   - Each frame stamped with capture date at bottom centre (`_draw_date`); configurable via `DATE_*` env vars
 - Video creation (`🎬 Create video` button in sidebar):
-  - Reads all frames from `EXPORT_PATH/images/` sorted by mtime (= original photo date)
-  - Invokes ffmpeg with a concat list; output at `EXPORT_PATH/VIDEO_NAME.VIDEO_EXTENSION`
+  - Builds one video per subfolder in `EXPORT_PATH/images/`; frames sorted A→Z by filename
+  - Merges all per-folder videos into `EXPORT_PATH/VIDEO_NAME.VIDEO_EXTENSION` via ffmpeg concat stream copy
   - Configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`
-  - Shows warning if export folder is empty; surfaces ffmpeg stderr on failure
+  - Shows warning if export folder has no subfolders; surfaces ffmpeg stderr on failure
+- Session management:
+  - Browse "Select" replaces the text area (not appends) to prevent accidental path accumulation
+  - After a successful load, text area resets to exactly the scanned paths; shows message if previous session was replaced
 
 ---
 
@@ -162,6 +165,12 @@ docs/
 | 2026-05-29 | ffmpeg concat demuxer for video creation | More reliable than glob/image2 for non-sequential filenames; sort by mtime preserves capture order regardless of naming convention |
 | 2026-05-29 | Semi-transparent strip behind date stamp | H.264 block compression destroys fine text; a dark background region survives encoding and is readable on any background colour |
 | 2026-05-29 | Capture `_draw_date` return value at call site | Alpha composite creates a new image object; discarding the return value silently lost all drawing |
+| 2026-05-29 | ThreadPoolExecutor for export with `_detect_lock` | rembg/ONNX and Pillow release the GIL so threads run truly in parallel; MediaPipe landmarker is serialised via lock to avoid concurrent calls on a shared instance |
+| 2026-05-29 | Export grouped by source folder | Photos from different folders may use different date formats; flat export mixed them unpredictably |
+| 2026-05-29 | Per-folder videos merged with ffmpeg `-c copy` | Stream copy avoids re-encoding, preserving quality and making merges fast |
+| 2026-05-29 | Frames sorted A→Z by filename for video | More reliable and deterministic than mtime, which can vary across filesystems or after file copies |
+| 2026-05-29 | Browse "Select" replaces text area instead of appending | Appending caused silent accumulation of old paths, leading to unintended combined sessions on next Load |
+| 2026-05-29 | Staged `_folder_paths_next` key for text area reset | Streamlit forbids modifying a widget-bound key after the widget renders; staging key is consumed before the widget is instantiated on the next rerun |
 
 ---
 
