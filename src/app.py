@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -171,6 +172,49 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
     st.success(" · ".join(parts))
 
 
+# ── Video helper ─────────────────────────────────────────────────────────────
+
+def _create_video(images_dir: Path) -> None:
+    from scanner import IMAGE_EXTENSIONS
+    frames = sorted(
+        [f for f in images_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS],
+        key=lambda f: f.stat().st_mtime,
+    )
+    if not frames:
+        st.warning(f"No images found in `{images_dir}`. Run **⬇ Export all** first.")
+        return
+
+    fps = int(os.environ.get("VIDEO_FPS", "24"))
+    name = os.environ.get("VIDEO_NAME", "timelapse")
+    ext = os.environ.get("VIDEO_EXTENSION", "mp4").lstrip(".")
+    codec = os.environ.get("VIDEO_CODEC", "libx264")
+    output = images_dir.parent / f"{name}.{ext}"
+
+    list_file = images_dir.parent / "_ffmpeg_list.txt"
+    list_file.write_text("\n".join(f"file '{f}'" for f in frames))
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-r", str(fps),
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_file),
+        "-c:v", codec,
+        "-pix_fmt", "yuv420p",
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        str(output),
+    ]
+
+    with st.spinner(f"Creating video — {len(frames)} frames at {fps} fps…"):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+    list_file.unlink(missing_ok=True)
+
+    if result.returncode != 0:
+        st.error(f"ffmpeg error:\n```\n{result.stderr[-1500:]}\n```")
+    else:
+        st.success(f"Video saved to `{output}` — {len(frames)} frames, {fps} fps")
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
@@ -294,13 +338,11 @@ with st.sidebar:
                         )
 
         st.divider()
+        _export_dir = Path(os.environ.get("EXPORT_PATH", str(Path(__file__).parents[1] / "tmp"))) / "images"
         if st.button("⬇ Export all", width="stretch", type="primary"):
-            _export_all(
-                st.session_state.images,
-                enabled_ops,
-                op_params,
-                Path(os.environ.get("EXPORT_PATH", str(Path(__file__).parents[1] / "tmp"))) / "images",
-            )
+            _export_all(st.session_state.images, enabled_ops, op_params, _export_dir)
+        if st.button("🎬 Create video", width="stretch"):
+            _create_video(_export_dir)
     else:
         enabled_ops = set()
         op_params = {}
