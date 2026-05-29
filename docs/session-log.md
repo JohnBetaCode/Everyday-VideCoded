@@ -199,3 +199,18 @@ A running log of each working session — what was built, why, and any decisions
 - Document the new env var in the project README or setup guide
 
 ---
+
+### 2026-05-29 — Show percentage in export progress bar
+
+**Goal:** Display a percentage indicator in the export progress bar to give users clearer feedback during export.
+
+**Done:**
+- Updated `src/app.py` to show percentage alongside the progress bar during export
+
+**Decisions:**
+- N/A
+
+**Next:**
+- Consider adding estimated time remaining to the progress display
+
+---
