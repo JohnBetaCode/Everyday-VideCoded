@@ -198,3 +198,20 @@ A running log of each working session — what was built, why, and any decisions
 - Monitor for similar widget-bound state mutation patterns elsewhere in the app
 
 ---
+
+### 2026-05-29 — Consolidate session logs and sync docs
+
+**Goal:** Consolidate six small session-log entries into one and bring project-context and usage docs up to date with recent feature work.
+
+**Done:**
+- Condensed `docs/session-log.md` from multiple small entries into a single consolidated entry (net −96 lines)
+- Updated `docs/project-context.md` with parallel export, folder-based output, per-folder video, session reset behaviour, and new key decisions
+- Updated `docs/usage.md` to document session reset behaviour
+
+**Decisions:**
+- Prefer consolidated session-log entries over many small incremental ones to keep the log readable
+
+**Next:**
+- Continue feature work tracked in project-context
+
+---
