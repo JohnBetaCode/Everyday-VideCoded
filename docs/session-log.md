@@ -183,3 +183,19 @@ A running log of each working session — what was built, why, and any decisions
 - Option to open `tmp/` in file manager after export
 
 ---
+
+### 2026-05-29 — Configurable export folder via env var
+
+**Goal:** Allow the export output directory to be configured through an `EXPORT_PATH` environment variable instead of being hardcoded.
+
+**Done:**
+- Added `EXPORT_PATH` entry to `configs/.env.example` with documentation
+- Updated `src/app.py` to read export path from `EXPORT_PATH` env var
+
+**Decisions:**
+- Used an environment variable for configuration to keep deployment-specific paths out of source code
+
+**Next:**
+- Document the new env var in the project README or setup guide
+
+---
