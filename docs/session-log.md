@@ -275,3 +275,19 @@ A running log of each working session — what was built, why, and any decisions
 - Keep usage guide updated as new features are added
 
 ---
+
+### 2026-05-29 — Sync README and project-context with current feature set
+
+**Goal:** Bring documentation up to date with the current state of the project by updating both the README and project-context reference file.
+
+**Done:**
+- Updated README features list, configuration table, usage steps, and project structure
+- Updated `docs/project-context.md` with current goals, features, env vars, key decisions, and backlog
+
+**Decisions:**
+- N/A
+
+**Next:**
+- Continue backlog items tracked in `docs/project-context.md`
+
+---
