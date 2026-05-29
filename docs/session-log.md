@@ -260,3 +260,18 @@ A running log of each working session — what was built, why, and any decisions
 - Consider lazy-loading models or showing an in-app spinner to reduce perceived startup time
 
 ---
+
+### 2026-05-29 — Add usage guide covering all app features
+
+**Goal:** Document all application features in a comprehensive usage guide for developers and users.
+
+**Done:**
+- Created `docs/usage.md` with 106 lines covering all app features
+
+**Decisions:**
+- N/A
+
+**Next:**
+- Keep usage guide updated as new features are added
+
+---
