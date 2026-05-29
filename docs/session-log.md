@@ -121,295 +121,35 @@ A running log of each working session — what was built, why, and any decisions
 
 ---
 
-### 2026-05-29 — Zoom face pipeline op and configurable face position env vars
+### 2026-05-29 — Pipeline sliders, export, video creation, and date stamp
 
-**Goal:** Add a zoom-face pipeline operation that scales the image to a target inter-ocular distance ratio, and expose env vars for controlling face placement.
-
-**Done:**
-- Added op 4 · Zoom face to `src/pipeline.py`, scaling images so inter-ocular distance matches `FACE_ZOOM_RATIO` (default 0.10) fraction of frame width
-- Extracted shared `_detect_iris()` helper reused by both align and zoom ops
-- Added `FACE_ALIGN_X` and `FACE_ALIGN_Y` env vars to control face position in the frame
-- Updated `configs/.env.example` with new env var documentation
-
-**Decisions:**
-- Inter-ocular distance expressed as a fraction of frame width (not pixels) to stay resolution-independent
-- Shared iris detection logic extracted into a helper rather than duplicated across ops
-
-**Next:**
-- Consider op 5 for additional face normalization steps (expression, lighting)
-- Evaluate whether zoom and align ops should be composable in a single pass
-
----
-
-### 2026-05-29 — Pipeline param sliders and face-not-found warning
-
-**Goal:** Expose tunable pipeline parameters as interactive sidebar sliders and surface missing face detections as an explicit error instead of silent fallback.
+**Goal:** Complete the core export and video pipeline: zoom face op, interactive param sliders, batch export, video creation with ffmpeg, and a date stamp on every exported frame.
 
 **Done:**
-- Added sidebar sliders for each pipeline op's tunable params (`BLUR_RADIUS`, `FACE_ALIGN_X/Y`, `FACE_ZOOM_RATIO`), seeded from env vars
-- Slider changes immediately rerun the pipeline on the current image
-- Introduced `FaceNotFoundError` so align/zoom ops signal missing detections cleanly
-- App shows a warning and leaves the processed frame empty on `FaceNotFoundError` instead of silently returning the original image
-- Updated `.env.example` to reflect new/changed env var names
+- **Op 4 · Zoom face** (`src/pipeline.py`): scales image so inter-ocular distance matches `FACE_ZOOM_RATIO` fraction of frame width; extracted shared `_detect_iris()` helper reused by align and zoom ops
+- **Pipeline param sliders**: each op now exposes tunable params as sidebar sliders seeded from env vars (`BLUR_RADIUS`, `FACE_ALIGN_X/Y`, `FACE_ZOOM_RATIO`); changes apply immediately on the current image
+- **`FaceNotFoundError`**: align and zoom ops raise this instead of silently returning the original; app shows a warning and leaves the processed frame empty
+- **Multi-face handling**: `num_faces` raised to 10; largest face by landmark bounding box is selected
+- **⬇ Export all** button: processes all loaded images through the current pipeline + sliders, saves to `EXPORT_PATH/images/` preserving original filenames, EXIF bytes, and file mtime; face-not-found images are skipped; progress bar shows `N / total (%)`
+- **Fixed double-rotation on export**: `exif_bytes` now read from the transposed image (orientation tag = 1) rather than the original (which still carried the rotation tag)
+- **🎬 Create video** button: reads all frames from `EXPORT_PATH/images/` sorted by mtime, writes an ffmpeg concat list, invokes `ffmpeg`; configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`; gracefully handles missing ffmpeg
+- **ffmpeg** added to `apt-get install` in `.devcontainer/Dockerfile`
+- **Date stamp on exported frames**: `_draw_date()` overlays `YYYY-MM-DD` at bottom centre using DejaVu Sans Bold with a semi-transparent dark background strip for H.264 resilience; configurable via `DATE_FORMAT`, `DATE_FONT_SIZE`, `DATE_TEXT_COLOR`, `DATE_STROKE_COLOR`, `DATE_STROKE_WIDTH`
+- Fixed stale image reference in `_draw_date`: alpha composite creates a new object, so the call site now captures the return value
+- Created `docs/usage.md` with a full feature walkthrough
+- Synced README, `docs/project-context.md`, and `docs/usage.md` with all new features
 
 **Decisions:**
-- Env vars serve as defaults for sliders rather than hard-coded values, keeping configuration externally overridable
-- `FaceNotFoundError` as a distinct exception type (vs. returning `None` or a sentinel) makes failure explicit and avoids silent data corruption downstream
+- Inter-ocular distance as a fraction of frame width (not pixels) keeps zoom resolution-independent
+- `FaceNotFoundError` as an explicit exception (vs. returning `None`) makes failures visible and prevents silent data corruption in exports
+- Largest bounding-box face chosen as the prominence heuristic for multi-face frames
+- mtime sort for video frame order reflects original capture date regardless of filename convention
+- Semi-transparent background strip behind date text survives H.264 block-based compression better than text stroke alone
+- ffmpeg concat demuxer used over glob/image2 for reliable ordering with non-sequential filenames
 
 **Next:**
-- Add sliders or controls for any remaining pipeline ops not yet parameterized
-- Consider persisting slider state across sessions
-
----
-
-### 2026-05-29 — Export all images with pipeline applied
-
-**Goal:** Add a bulk export feature that processes all loaded images through the current pipeline and saves them to `tmp/` with metadata preserved.
-
-**Done:**
-- Added "Export all" button to the pipeline sidebar panel (`src/app.py`)
-- Processes every loaded image through the current pipeline and params
-- Saves output to `tmp/` using original filenames
-- Copies EXIF bytes and sets file mtime to the original photo date
-- Skips images where no face is detected (counted separately, not as errors)
-- Progress bar tracks export progress; summary shown on completion
-
-**Decisions:**
-- Face-not-found treated as a skip rather than an error, keeping export results clean
-- Output directory fixed to `tmp/` for consistency with prior export conventions
-
-**Next:**
-- Allow user to configure output directory
-- Option to open `tmp/` in file manager after export
-
----
-
-### 2026-05-29 — Configurable export folder via env var
-
-**Goal:** Allow the export output directory to be configured through an `EXPORT_PATH` environment variable instead of being hardcoded.
-
-**Done:**
-- Added `EXPORT_PATH` entry to `configs/.env.example` with documentation
-- Updated `src/app.py` to read export path from `EXPORT_PATH` env var
-
-**Decisions:**
-- Used an environment variable for configuration to keep deployment-specific paths out of source code
-
-**Next:**
-- Document the new env var in the project README or setup guide
-
----
-
-### 2026-05-29 — Show percentage in export progress bar
-
-**Goal:** Display a percentage indicator in the export progress bar to give users clearer feedback during export.
-
-**Done:**
-- Updated `src/app.py` to show percentage alongside the progress bar during export
-
-**Decisions:**
-- N/A
-
-**Next:**
-- Consider adding estimated time remaining to the progress display
-
----
-
-### 2026-05-29 — Fix double-rotation on image export
-
-**Goal:** Prevent exported images from being rotated twice by reading EXIF bytes from the already-transposed image rather than the original.
-
-**Done:**
-- Fixed `src/app.py` to extract `exif_bytes` after transposing the image, so the rotation tag no longer reflects a correction that has already been applied to the pixels.
-
-**Decisions:**
-- Read EXIF data post-transpose so the embedded orientation tag matches the actual pixel orientation, avoiding double-rotation in viewers that honor EXIF.
-
-**Next:**
-- Verify exported images render correctly in EXIF-aware viewers (e.g. macOS Preview, web browsers).
-
----
-
-### 2026-05-29 — Pick largest face in multi-face frames
-
-**Goal:** Ensure the most prominent subject is always selected when multiple faces appear in a photo.
-
-**Done:**
-- Raised `num_faces` from its previous limit to 10 to detect all candidates in a frame
-- Added logic in `src/pipeline.py` to select the face with the largest landmark bounding box
-
-**Decisions:**
-- Largest bounding box used as the prominence heuristic — closest/most prominent subject in group photos or accidental multi-face captures
-
-**Next:**
-- Consider fallback behavior when no faces are detected after raising the limit
-
----
-
-### 2026-05-29 — Add startup time warning to README
-
-**Goal:** Warn users in the README about the slow first-run startup caused by model loading.
-
-**Done:**
-- Added a startup time warning note to `README.md` advising users to expect a delay on first launch
-
-**Decisions:**
-- N/A
-
-**Next:**
-- Consider lazy-loading models or showing an in-app spinner to reduce perceived startup time
-
----
-
-### 2026-05-29 — Add usage guide covering all app features
-
-**Goal:** Document all application features in a comprehensive usage guide for developers and users.
-
-**Done:**
-- Created `docs/usage.md` with 106 lines covering all app features
-
-**Decisions:**
-- N/A
-
-**Next:**
-- Keep usage guide updated as new features are added
-
----
-
-### 2026-05-29 — Sync README and project-context with current feature set
-
-**Goal:** Bring documentation up to date with the current state of the project by updating both the README and project-context reference file.
-
-**Done:**
-- Updated README features list, configuration table, usage steps, and project structure
-- Updated `docs/project-context.md` with current goals, features, env vars, key decisions, and backlog
-
-**Decisions:**
-- N/A
-
-**Next:**
-- Continue backlog items tracked in `docs/project-context.md`
-
----
-
-### 2026-05-29 — Save exported images to images/ subfolder within export path
-
-**Goal:** Organise exported images into a dedicated `images/` subfolder inside the configured export directory.
-
-**Done:**
-- Updated `src/app.py` to write exported images to `<EXPORT_PATH>/images/` instead of directly into `<EXPORT_PATH>`
-
-**Decisions:**
-- N/A
-
-**Next:**
-- Consider creating additional subfolders (e.g. by date or batch) for larger exports
-
----
-
-### 2026-05-29 — Create video button using ffmpeg from exported images
-
-**Goal:** Add a "Create video" button to the pipeline panel that assembles exported images into a video using ffmpeg.
-
-**Done:**
-- Added "Create video" button below "Export all" in the pipeline panel (`src/app.py`)
-- Images in `EXPORT_PATH/images/` are sorted by mtime to preserve original photo date order
-- ffmpeg is invoked with a concat list; output is configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, and `VIDEO_CODEC` env vars
-- Added warning dialog when no images exist in the export folder
-- Surfaces ffmpeg stderr output if the command fails
-- Documented new env vars in `configs/.env.example`
-
-**Decisions:**
-- Sort by mtime rather than filename to reflect original capture order regardless of naming convention
-- Expose codec and FPS as env vars to avoid hardcoding format assumptions
-
-**Next:**
-- Consider a progress indicator for long ffmpeg runs
-- Add option to open the output video file after creation
-
----
-
-### 2026-05-29 — Install ffmpeg in container and handle missing ffmpeg gracefully
-
-**Goal:** Ensure ffmpeg is available in the dev container and that the app degrades gracefully when it is absent.
-
-**Done:**
-- Added ffmpeg installation to `.devcontainer/Dockerfile`
-- Updated `src/app.py` to detect missing ffmpeg and handle the error gracefully
-
-**Decisions:**
-- Handled missing ffmpeg at runtime rather than hard-failing, allowing the app to remain usable without video export capability
-
-**Next:**
-- Test video export end-to-end in the container environment
-
----
-
-### 2026-05-29 — README polish and image gitignore
-
-**Goal:** Update the README with a cleaner title and preview images while excluding image files from version control.
-
-**Done:**
-- Updated README title and added preview image references
-- Added image file patterns to `.gitignore` to keep binary assets out of the repo
-
-**Decisions:**
-- Preview images are referenced in the README but not tracked in git, keeping the repo lightweight
-
-**Next:**
-- Host or link preview images externally if needed for public visibility
-
----
-
-### 2026-05-29 — Date stamp on exported frames
-
-**Goal:** Overlay the capture date on each exported frame as a readable watermark.
-
-**Done:**
-- Added date stamping to exported frames in `src/app.py` with white text and black stroke
-- Set font size proportional to image height for consistent appearance across resolutions
-- Added fallback to Pillow's built-in font when DejaVu is unavailable
-
-**Decisions:**
-- Bottom-center placement for the date stamp
-- Proportional font sizing rather than a fixed pixel size to handle varying image dimensions
-- Graceful degradation to built-in font keeps the feature working without system font dependencies
-
-**Next:**
-- Consider making stamp position or size configurable via UI or settings
-
----
-
-### 2026-05-29 — Make date stamp configurable via env vars
-
-**Goal:** Expose date stamp rendering options as environment variables so users can customize the overlay without touching source code.
-
-**Done:**
-- Added `DATE_FORMAT`, `DATE_FONT_SIZE`, `DATE_TEXT_COLOR`, `DATE_STROKE_COLOR`, and `DATE_STROKE_WIDTH` env vars
-- Documented all new variables in `configs/.env.example`
-- Updated `src/app.py` to read and apply these settings at runtime
-
-**Decisions:**
-- Used environment variables (rather than a config file or CLI flags) to keep customization lightweight and container-friendly
-
-**Next:**
-- Consider adding validation or fallback defaults for malformed env var values
-
----
-
-### 2026-05-29 — Fix date stamp visibility in video frames
-
-**Goal:** Make the date stamp survive H.264 compression and remain readable on any background.
-
-**Done:**
-- Added semi-transparent dark background strip behind date stamp text in `src/app.py`
-- Switched font to DejaVu Sans Bold for better legibility at small sizes
-- Fixed stale image reference by capturing return value from `_draw_date` (alpha composite returns a new object)
-
-**Decisions:**
-- Dark background strip chosen over font outline/shadow as a more compression-resilient approach
-
-**Next:**
-- Re-export existing images to pick up the visibility fix
+- Filename-based date parsing (third fallback after EXIF and mtime)
+- Async/cached folder scanning for large collections
+- Filter images by year or date range in the GUI
 
 ---

@@ -97,10 +97,41 @@ When multiple faces are detected the largest face (by landmark bounding box) is 
 
 Click **⬇ Export all** at the bottom of the pipeline panel to process every loaded image through the current pipeline settings and save the results.
 
-- Output folder: configured via `EXPORT_PATH` in `configs/.env`. Defaults to `tmp/` in the project root.
+- Output folder: `<EXPORT_PATH>/images/` — configured via `EXPORT_PATH` in `configs/.env`, defaults to `tmp/` in the project root.
 - Filenames are preserved from the source.
 - EXIF data and file modification time are carried over from the original photo.
+- Each frame is stamped with its capture date (`YYYY-MM-DD`) at the bottom centre using a bold white font on a semi-transparent dark strip.
 - Images where no face is detected are skipped (not exported).
 - Existing files are overwritten.
 
 A progress bar shows `N / total (%)` while running. On completion a summary reports how many images were exported, skipped (no face), and any errors.
+
+### Date stamp options
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `DATE_FORMAT` | `%Y-%m-%d` | strftime format string |
+| `DATE_FONT_SIZE` | _(auto)_ | Fixed px size; leave empty to scale with image height (`h / 20`) |
+| `DATE_TEXT_COLOR` | `#FFFFFF` | Text colour in hex |
+| `DATE_STROKE_COLOR` | `#000000` | Outline colour in hex |
+| `DATE_STROKE_WIDTH` | `2` | Outline thickness in pixels |
+
+---
+
+## Creating a video
+
+Click **🎬 Create video** to assemble all frames in `<EXPORT_PATH>/images/` into a timelapse video.
+
+- Frames are ordered by file modification time, which matches the original photo date set during export.
+- If the images folder is empty or missing, a warning is shown and nothing happens.
+- The output video is saved to `<EXPORT_PATH>/<VIDEO_NAME>.<VIDEO_EXTENSION>` (default: `tmp/timelapse.mp4`).
+- Requires **ffmpeg** to be installed — it is included in the dev container automatically.
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `VIDEO_NAME` | `timelapse` | Output filename without extension |
+| `VIDEO_EXTENSION` | `mp4` | Container format |
+| `VIDEO_FPS` | `24` | Frames per second |
+| `VIDEO_CODEC` | `libx264` | ffmpeg video codec |
+
+> **Tip:** Run **⬇ Export all** before **🎬 Create video** to make sure the `images/` folder is up to date with your current pipeline settings.

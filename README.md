@@ -1,4 +1,4 @@
-# Everyday Video Maker v2.0
+# Everyday Video Maker v2.0 (Claude Vibe Coded)
 
 > A "face every day" maker — browse years of daily self-portraits, align faces automatically, and export a timelapse that shows how you change over time.
 
@@ -27,7 +27,13 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
 
 **everyday2** loads one or more folders of daily self-portrait photos, sorts them by date (EXIF → mtime fallback), and lets you browse them with date statistics and a real-time CV pipeline. The pipeline operations — grayscale, background blur, face alignment, face zoom — stack in order and render side-by-side with the original. Processed images can be batch-exported with original filenames and dates preserved. The end goal is to produce an aligned timelapse video showing personal change over months and years.
 
-[<img src="https://user-images.githubusercontent.com/43115782/121792040-f7180e00-cbb5-11eb-9722-5200d20b8169.gif" width="300">]()| [<img src="https://user-images.githubusercontent.com/43115782/121792067-38a8b900-cbb6-11eb-882e-c2ae489e46af.gif" width="300">]()| [<img src="https://user-images.githubusercontent.com/43115782/121792038-f4b5b400-cbb5-11eb-8700-3cf72b7d07e5.gif" width="300">]()
+<div align="center">
+
+| | | |
+|:-:|:-:|:-:|
+| <img src="https://user-images.githubusercontent.com/43115782/121792040-f7180e00-cbb5-11eb-9722-5200d20b8169.gif" width="300"> | <img src="https://user-images.githubusercontent.com/43115782/121792067-38a8b900-cbb6-11eb-882e-c2ae489e46af.gif" width="300"> | <img src="https://user-images.githubusercontent.com/43115782/121792038-f4b5b400-cbb5-11eb-8700-3cf72b7d07e5.gif" width="300"> |
+
+</div>
 
 
 ---
@@ -48,7 +54,8 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
   - Each op exposes its parameters as **live sliders** seeded from env vars; changes apply instantly
   - If no face is detected a warning is shown and the processed frame is left empty
   - When multiple faces are present the largest (by landmark bounding box) is used
-- **Batch export** — processes all loaded images through the active pipeline and saves them to a configurable output folder, preserving original filenames, EXIF, and file dates
+- **Batch export** — processes all loaded images through the active pipeline and saves them to `EXPORT_PATH/images/`, preserving original filenames, EXIF, and file dates; each frame is stamped with its capture date at the bottom centre
+- **Video creation** — assembles exported frames into a video via ffmpeg; configurable FPS, codec, format, and output name
 - **GPU support** — NVIDIA GPU passthrough via `nvidia-container-toolkit`; CPU fallback for every op
 
 ---
@@ -110,7 +117,8 @@ Then open [http://localhost:8501](http://localhost:8501).
 2. Click **Load Images**.
 3. Use **◀ / ▶** or the slider to navigate.
 4. Toggle CV pipeline operations in the sidebar — processed result appears on the right. Adjust each op's parameters with the sliders that appear below its checkbox.
-5. Click **⬇ Export all** to save all processed images to the output folder.
+5. Click **⬇ Export all** to save all processed images to `EXPORT_PATH/images/`. Each frame gets a date stamp at the bottom centre.
+6. Click **🎬 Create video** to assemble the exported frames into a timelapse video.
 
 See [docs/usage.md](docs/usage.md) for a full walkthrough.
 
@@ -127,7 +135,16 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | `FACE_ALIGN_X` | `0.5` | Horizontal target position of the face centre (0.0–1.0). `0.5` = centred. |
 | `FACE_ALIGN_Y` | `0.4` | Vertical target position of the face centre (0.0–1.0). `0.4` = slightly above centre. |
 | `FACE_ZOOM_RATIO` | `0.25` | Target inter-ocular distance as a fraction of frame width. Lower = zoom out (more body). |
-| `EXPORT_PATH` | `tmp/` | Folder where exported images are saved. |
+| `EXPORT_PATH` | `tmp/` | Root export folder; images go to `EXPORT_PATH/images/`. |
+| `VIDEO_NAME` | `timelapse` | Output video filename (without extension). |
+| `VIDEO_EXTENSION` | `mp4` | Video container format. |
+| `VIDEO_FPS` | `24` | Frames per second. |
+| `VIDEO_CODEC` | `libx264` | ffmpeg video codec. |
+| `DATE_FORMAT` | `%Y-%m-%d` | strftime format for the date stamp on exported frames. |
+| `DATE_FONT_SIZE` | _(auto)_ | Font size in px; leave empty to scale with image height. |
+| `DATE_TEXT_COLOR` | `#FFFFFF` | Date stamp text colour (hex). |
+| `DATE_STROKE_COLOR` | `#000000` | Date stamp outline colour (hex). |
+| `DATE_STROKE_WIDTH` | `2` | Date stamp outline width in pixels. |
 
 ---
 

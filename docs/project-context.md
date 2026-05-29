@@ -21,8 +21,9 @@ This file is the single source of truth for the project's current state. Update 
 - [x] Face zoom (normalise face size across frames by inter-ocular distance)
 - [x] Side-by-side view: original image + processed result
 - [x] Batch export of processed images with original filenames and dates
+- [x] Date stamp (capture date) overlaid on every exported frame
+- [x] Timelapse video export via ffmpeg
 - [ ] Filename-based date parsing as a third fallback
-- [ ] Timelapse video export
 
 ---
 
@@ -41,7 +42,7 @@ This file is the single source of truth for the project's current state. Update 
 | Container user | `ada` | Non-root for safer dev |
 | GPU | nvidia-container-toolkit | Optional; remove `deploy` block if no NVIDIA GPU |
 | Face detection | _TBD_ | dlib or MediaPipe, not started yet |
-| Video export | _TBD_ | likely OpenCV or FFmpeg |
+| Video export | ffmpeg (system) | concat demuxer; invoked via subprocess |
 
 ---
 
@@ -95,10 +96,16 @@ docs/
   - Pipeline runs with a spinner in the processed panel while computing
 - Batch export (`⬇ Export all` button in sidebar):
   - Runs all loaded images through current pipeline + slider params
-  - Saves to `EXPORT_PATH` (default `tmp/`) with original filename
+  - Saves to `EXPORT_PATH/images/` with original filename
   - Preserves EXIF bytes and sets file mtime to original photo date
   - Images with no face detected are skipped, not exported
   - Progress bar shows `N / total (%)`
+  - Each frame stamped with capture date at bottom centre (`_draw_date`); configurable via `DATE_*` env vars
+- Video creation (`🎬 Create video` button in sidebar):
+  - Reads all frames from `EXPORT_PATH/images/` sorted by mtime (= original photo date)
+  - Invokes ffmpeg with a concat list; output at `EXPORT_PATH/VIDEO_NAME.VIDEO_EXTENSION`
+  - Configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`
+  - Shows warning if export folder is empty; surfaces ffmpeg stderr on failure
 
 ---
 
@@ -112,7 +119,6 @@ docs/
 
 ## Backlog
 
-- Timelapse video export (configurable fps, date range, resolution)
 - Filter images by year or custom date range in the GUI
 - Thumbnail strip / calendar heatmap view
 - Filename date parsing (e.g. `2024-03-15_selfie.jpg`, `IMG_20240315.jpg`)
@@ -153,6 +159,9 @@ docs/
 | 2026-05-29 | `FaceNotFoundError` exception instead of silent passthrough | Makes missing detections visible; allows export to skip undetected images cleanly |
 | 2026-05-29 | `num_faces=10`, pick largest by bounding box | Handles group photos gracefully without requiring the caller to manage multi-face results |
 | 2026-05-29 | Read EXIF bytes from transposed image for export | Original EXIF retains the rotation tag; reading from the transposed copy gets orientation=1, preventing double-rotation in viewers |
+| 2026-05-29 | ffmpeg concat demuxer for video creation | More reliable than glob/image2 for non-sequential filenames; sort by mtime preserves capture order regardless of naming convention |
+| 2026-05-29 | Semi-transparent strip behind date stamp | H.264 block compression destroys fine text; a dark background region survives encoding and is readable on any background colour |
+| 2026-05-29 | Capture `_draw_date` return value at call site | Alpha composite creates a new image object; discarding the return value silently lost all drawing |
 
 ---
 
@@ -174,7 +183,16 @@ See `configs/.env.example` for the full list.
 | `FACE_ALIGN_X` | Horizontal target position of face centre, 0.0–1.0 (default: 0.5) |
 | `FACE_ALIGN_Y` | Vertical target position of face centre, 0.0–1.0 (default: 0.4) |
 | `FACE_ZOOM_RATIO` | Target inter-ocular distance as fraction of frame width (default: 0.25) |
-| `EXPORT_PATH` | Output folder for batch export (default: `tmp/` in project root) |
+| `EXPORT_PATH` | Root export folder; images saved to `EXPORT_PATH/images/` (default: `tmp/`) |
+| `VIDEO_NAME` | Output video filename without extension (default: `timelapse`) |
+| `VIDEO_EXTENSION` | Video container format (default: `mp4`) |
+| `VIDEO_FPS` | Frames per second (default: `24`) |
+| `VIDEO_CODEC` | ffmpeg video codec (default: `libx264`) |
+| `DATE_FORMAT` | strftime format for the date stamp (default: `%Y-%m-%d`) |
+| `DATE_FONT_SIZE` | Font size in px; empty = auto-scale with image height |
+| `DATE_TEXT_COLOR` | Date stamp text colour in hex (default: `#FFFFFF`) |
+| `DATE_STROKE_COLOR` | Date stamp outline colour in hex (default: `#000000`) |
+| `DATE_STROKE_WIDTH` | Date stamp outline thickness in px (default: `2`) |
 
 ---
 
