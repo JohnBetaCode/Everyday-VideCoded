@@ -226,3 +226,18 @@ A running log of each working session — what was built, why, and any decisions
 - Consider progress reporting per subfolder during batch export
 
 ---
+
+### 2026-05-29 — Fix video frame sort order
+
+**Goal:** Ensure video frames are assembled in consistent alphabetical order rather than relying on filesystem modification times.
+
+**Done:**
+- Updated `src/app.py` to sort video frames by filename (A→Z) instead of mtime
+
+**Decisions:**
+- Filename-based sorting is more reliable and deterministic than mtime, which can vary across filesystems or after file copies
+
+**Next:**
+- Verify output videos are correctly ordered end-to-end
+
+---
