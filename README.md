@@ -92,6 +92,8 @@ streamlit run src/app.py
 
 Then open [http://localhost:8501](http://localhost:8501).
 
+> **Note:** The first load may take a few seconds — the MediaPipe face landmarker model is downloaded and initialized at startup, and the U2Net background segmentation model (~170 MB) is downloaded on the first use of "Blur background".
+
 1. Type or paste a folder path in the sidebar, or use **Browse…** to pick from connected devices.
 2. Click **Load Images**.
 3. Use **◀ / ▶** or the slider to navigate.
