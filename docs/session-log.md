@@ -258,3 +258,19 @@ A running log of each working session — what was built, why, and any decisions
 - Consider persisting session state across browser refreshes if stale-path confusion recurs
 
 ---
+
+### 2026-05-29 — Fix widget-bound session state staging in Streamlit
+
+**Goal:** Prevent `StreamlitAPIException` caused by modifying a widget-bound session state key after the widget has already rendered in the same pass.
+
+**Done:**
+- Introduced a staging key (`_folder_paths_next`) in `src/app.py` that holds the pending folder paths update
+- Consumed the staging key before the `text_area` widget is created on the next rerun, avoiding the illegal same-pass mutation
+
+**Decisions:**
+- Used a dedicated staging key rather than deferring or restructuring the widget render order, keeping the fix minimal and localized to the affected state transition
+
+**Next:**
+- Monitor for similar widget-bound state mutation patterns elsewhere in the app
+
+---
