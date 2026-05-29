@@ -143,8 +143,8 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
         try:
             with Image.open(src) as orig:
                 orig.load()
-                exif_bytes = orig.info.get("exif", b"")
                 frame = ImageOps.exif_transpose(orig).copy()
+                exif_bytes = frame.info.get("exif", b"")
             result = run_pipeline(frame, enabled_ops, op_params)
             dest = out_dir / src.name
             try:
