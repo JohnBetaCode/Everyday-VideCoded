@@ -379,3 +379,20 @@ A running log of each working session — what was built, why, and any decisions
 - Consider making stamp position or size configurable via UI or settings
 
 ---
+
+### 2026-05-29 — Make date stamp configurable via env vars
+
+**Goal:** Expose date stamp rendering options as environment variables so users can customize the overlay without touching source code.
+
+**Done:**
+- Added `DATE_FORMAT`, `DATE_FONT_SIZE`, `DATE_TEXT_COLOR`, `DATE_STROKE_COLOR`, and `DATE_STROKE_WIDTH` env vars
+- Documented all new variables in `configs/.env.example`
+- Updated `src/app.py` to read and apply these settings at runtime
+
+**Decisions:**
+- Used environment variables (rather than a config file or CLI flags) to keep customization lightweight and container-friendly
+
+**Next:**
+- Consider adding validation or fallback defaults for malformed env var values
+
+---
