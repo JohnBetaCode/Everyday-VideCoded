@@ -298,7 +298,7 @@ with st.sidebar:
                 st.session_state.images,
                 enabled_ops,
                 op_params,
-                Path(__file__).parents[1] / "tmp",
+                Path(os.environ.get("EXPORT_PATH", str(Path(__file__).parents[1] / "tmp"))),
             )
     else:
         enabled_ops = set()
