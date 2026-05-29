@@ -205,3 +205,24 @@ A running log of each working session — what was built, why, and any decisions
 - Consider per-thread MediaPipe instances if the detect lock becomes a bottleneck
 
 ---
+
+### 2026-05-29 — Folder-based export and per-folder video creation
+
+**Goal:** Reorganize image export to preserve source folder structure and generate one video per subfolder before merging into the final timelapse.
+
+**Done:**
+- Images now export to `EXPORT_PATH/images/<source_folder>/` instead of a flat directory
+- Video creation builds one video per subfolder as an intermediate artifact (`EXPORT_PATH/<folder_name>.<ext>`)
+- Per-folder videos are merged into the final timelapse via ffmpeg concat with stream copy
+- Updated `docs/usage.md` to reflect new export path structure
+- Refactored `src/app.py` with ~80 lines of new logic for subfolder handling
+
+**Decisions:**
+- Used ffmpeg concat with stream copy (no re-encode) for merging per-folder videos to preserve quality and speed up processing
+- Per-folder intermediate videos are retained at `EXPORT_PATH/` alongside the final output
+
+**Next:**
+- Add cleanup option to remove intermediate per-folder video artifacts after merge
+- Consider progress reporting per subfolder during batch export
+
+---
