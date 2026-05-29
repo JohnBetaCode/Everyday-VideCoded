@@ -161,3 +161,25 @@ A running log of each working session — what was built, why, and any decisions
 - Consider persisting slider state across sessions
 
 ---
+
+### 2026-05-29 — Export all images with pipeline applied
+
+**Goal:** Add a bulk export feature that processes all loaded images through the current pipeline and saves them to `tmp/` with metadata preserved.
+
+**Done:**
+- Added "Export all" button to the pipeline sidebar panel (`src/app.py`)
+- Processes every loaded image through the current pipeline and params
+- Saves output to `tmp/` using original filenames
+- Copies EXIF bytes and sets file mtime to the original photo date
+- Skips images where no face is detected (counted separately, not as errors)
+- Progress bar tracks export progress; summary shown on completion
+
+**Decisions:**
+- Face-not-found treated as a skip rather than an error, keeping export results clean
+- Output directory fixed to `tmp/` for consistency with prior export conventions
+
+**Next:**
+- Allow user to configure output directory
+- Option to open `tmp/` in file manager after export
+
+---
