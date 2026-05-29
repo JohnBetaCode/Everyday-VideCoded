@@ -97,7 +97,7 @@ When multiple faces are detected the largest face (by landmark bounding box) is 
 
 Click **⬇ Export all** at the bottom of the pipeline panel to process every loaded image through the current pipeline settings and save the results.
 
-- Output folder: `<EXPORT_PATH>/images/` — configured via `EXPORT_PATH` in `configs/.env`, defaults to `tmp/` in the project root.
+- Output folder: `<EXPORT_PATH>/images/<source_folder>/` — images are grouped by their source folder name. This keeps photos from different folders (which may use different date formats or naming conventions) isolated from each other.
 - Filenames are preserved from the source.
 - EXIF data and file modification time are carried over from the original photo.
 - Each frame is stamped with its capture date (`YYYY-MM-DD`) at the bottom centre using a bold white font on a semi-transparent dark strip.
@@ -122,9 +122,12 @@ A progress bar shows `N / total (%)` while running. On completion a summary repo
 
 Click **🎬 Create video** to assemble all frames in `<EXPORT_PATH>/images/` into a timelapse video.
 
-- Frames are ordered by file modification time, which matches the original photo date set during export.
-- If the images folder is empty or missing, a warning is shown and nothing happens.
-- The output video is saved to `<EXPORT_PATH>/<VIDEO_NAME>.<VIDEO_EXTENSION>` (default: `tmp/timelapse.mp4`).
+- One video is created **per source folder** (e.g. `tmp/2023.mp4`, `tmp/2024.mp4`), then all folder videos are **merged into a single final video** (`tmp/timelapse.mp4`).
+- Frames within each folder video are ordered by file modification time (= original photo date).
+- If the images folder has no subfolders, a warning is shown and nothing happens.
+- The final merged video is saved to `<EXPORT_PATH>/<VIDEO_NAME>.<VIDEO_EXTENSION>` (default: `tmp/timelapse.mp4`).
+
+> **Why folder-based?** Photos from different source folders may use different date formats or naming conventions, which can cause ordering issues if mixed into a single flat batch.
 - Requires **ffmpeg** to be installed — it is included in the dev container automatically.
 
 | Env var | Default | Description |

@@ -178,6 +178,8 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
 
 def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: Path) -> tuple[str, str]:
     src = Path(entry["path"])
+    dest_dir = out_dir / src.parent.name
+    dest_dir.mkdir(parents=True, exist_ok=True)
     try:
         with Image.open(src) as orig:
             orig.load()
@@ -185,7 +187,7 @@ def _process_one(entry: dict, enabled_ops: set[str], op_params: dict, out_dir: P
             exif_bytes = frame.info.get("exif", b"")
         result = run_pipeline(frame, enabled_ops, op_params)
         result = _draw_date(result, entry["date"])
-        dest = out_dir / src.name
+        dest = dest_dir / src.name
         try:
             result.save(dest, exif=exif_bytes)
         except TypeError:
@@ -235,50 +237,89 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
 
 # ── Video helper ─────────────────────────────────────────────────────────────
 
+def _ffmpeg(cmd: list[str], spinner_text: str) -> subprocess.CompletedProcess | None:
+    """Run an ffmpeg command with a spinner. Returns None if ffmpeg is missing."""
+    try:
+        with st.spinner(spinner_text):
+            return subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        st.error("ffmpeg not found. Install it with `sudo apt-get install ffmpeg` or rebuild the container.")
+        return None
+
+
 def _create_video(images_dir: Path) -> None:
     from scanner import IMAGE_EXTENSIONS
-    frames = sorted(
-        [f for f in images_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS],
-        key=lambda f: f.stat().st_mtime,
-    )
-    if not frames:
-        st.warning(f"No images found in `{images_dir}`. Run **⬇ Export all** first.")
-        return
 
     fps = int(os.environ.get("VIDEO_FPS", "24"))
     name = os.environ.get("VIDEO_NAME", "timelapse")
     ext = os.environ.get("VIDEO_EXTENSION", "mp4").lstrip(".")
     codec = os.environ.get("VIDEO_CODEC", "libx264")
-    output = images_dir.parent / f"{name}.{ext}"
 
-    list_file = images_dir.parent / "_ffmpeg_list.txt"
-    list_file.write_text("\n".join(f"file '{f}'" for f in frames))
-
-    cmd = [
-        "ffmpeg", "-y",
-        "-r", str(fps),
-        "-f", "concat", "-safe", "0",
-        "-i", str(list_file),
-        "-c:v", codec,
-        "-pix_fmt", "yuv420p",
-        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-        str(output),
-    ]
-
-    try:
-        with st.spinner(f"Creating video — {len(frames)} frames at {fps} fps…"):
-            result = subprocess.run(cmd, capture_output=True, text=True)
-    except FileNotFoundError:
-        list_file.unlink(missing_ok=True)
-        st.error("ffmpeg not found. Install it with `sudo apt-get install ffmpeg` or rebuild the container.")
+    subfolders = sorted([d for d in images_dir.iterdir() if d.is_dir()]) if images_dir.is_dir() else []
+    if not subfolders:
+        st.warning(f"No subfolders found in `{images_dir}`. Run **⬇ Export all** first.")
         return
 
-    list_file.unlink(missing_ok=True)
+    folder_videos: list[Path] = []
 
-    if result.returncode != 0:
-        st.error(f"ffmpeg error:\n```\n{result.stderr[-1500:]}\n```")
+    for folder in subfolders:
+        frames = sorted(
+            [f for f in folder.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS],
+            key=lambda f: f.stat().st_mtime,
+        )
+        if not frames:
+            continue
+
+        list_file = images_dir.parent / f"_ffmpeg_{folder.name}.txt"
+        list_file.write_text("\n".join(f"file '{f}'" for f in frames))
+        folder_video = images_dir.parent / f"{folder.name}.{ext}"
+
+        result = _ffmpeg([
+            "ffmpeg", "-y",
+            "-r", str(fps), "-f", "concat", "-safe", "0", "-i", str(list_file),
+            "-c:v", codec, "-pix_fmt", "yuv420p",
+            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            str(folder_video),
+        ], f"Creating `{folder.name}` — {len(frames)} frames…")
+
+        list_file.unlink(missing_ok=True)
+
+        if result is None:
+            return
+        if result.returncode != 0:
+            st.error(f"ffmpeg error (`{folder.name}`):\n```\n{result.stderr[-1000:]}\n```")
+            return
+
+        st.info(f"`{folder.name}` — {len(frames)} frames done")
+        folder_videos.append(folder_video)
+
+    if not folder_videos:
+        st.warning("No images found in any export subfolder.")
+        return
+
+    final = images_dir.parent / f"{name}.{ext}"
+
+    if len(folder_videos) == 1:
+        folder_videos[0].rename(final)
     else:
-        st.success(f"Video saved to `{output}` — {len(frames)} frames, {fps} fps")
+        merge_list = images_dir.parent / "_ffmpeg_merge.txt"
+        merge_list.write_text("\n".join(f"file '{v}'" for v in folder_videos))
+
+        result = _ffmpeg([
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0", "-i", str(merge_list),
+            "-c", "copy", str(final),
+        ], f"Merging {len(folder_videos)} folder videos…")
+
+        merge_list.unlink(missing_ok=True)
+
+        if result is None:
+            return
+        if result.returncode != 0:
+            st.error(f"ffmpeg merge error:\n```\n{result.stderr[-1000:]}\n```")
+            return
+
+    st.success(f"Final video saved to `{final}` — {len(folder_videos)} folder(s) merged")
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
