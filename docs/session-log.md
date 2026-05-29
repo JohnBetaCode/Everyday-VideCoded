@@ -245,3 +245,18 @@ A running log of each working session — what was built, why, and any decisions
 - Consider fallback behavior when no faces are detected after raising the limit
 
 ---
+
+### 2026-05-29 — Add startup time warning to README
+
+**Goal:** Warn users in the README about the slow first-run startup caused by model loading.
+
+**Done:**
+- Added a startup time warning note to `README.md` advising users to expect a delay on first launch
+
+**Decisions:**
+- N/A
+
+**Next:**
+- Consider lazy-loading models or showing an in-app spinner to reduce perceived startup time
+
+---
