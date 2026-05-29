@@ -214,3 +214,18 @@ A running log of each working session — what was built, why, and any decisions
 - Consider adding estimated time remaining to the progress display
 
 ---
+
+### 2026-05-29 — Fix double-rotation on image export
+
+**Goal:** Prevent exported images from being rotated twice by reading EXIF bytes from the already-transposed image rather than the original.
+
+**Done:**
+- Fixed `src/app.py` to extract `exif_bytes` after transposing the image, so the rotation tag no longer reflects a correction that has already been applied to the pixels.
+
+**Decisions:**
+- Read EXIF data post-transpose so the embedded orientation tag matches the actual pixel orientation, avoiding double-rotation in viewers that honor EXIF.
+
+**Next:**
+- Verify exported images render correctly in EXIF-aware viewers (e.g. macOS Preview, web browsers).
+
+---
