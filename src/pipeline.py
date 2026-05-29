@@ -43,26 +43,31 @@ def _blur_background(img: Image.Image) -> Image.Image:
     return Image.composite(img, blurred, mask)
 
 
-def _align_face(img: Image.Image) -> Image.Image:
+def _detect_iris(img: Image.Image) -> tuple[float, float, float, float] | None:
+    """Return (lx, ly, rx, ry) iris pixel coords, or None if no face detected."""
     arr = np.array(img.convert("RGB"))
     h, w = arr.shape[:2]
-
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=arr)
     result = _face_landmarker.detect(mp_image)
-
     if not result.face_landmarks:
+        return None
+    lm = result.face_landmarks[0]
+    return lm[468].x * w, lm[468].y * h, lm[473].x * w, lm[473].y * h
+
+
+def _align_face(img: Image.Image) -> Image.Image:
+    iris = _detect_iris(img)
+    if iris is None:
         return img
 
-    lm = result.face_landmarks[0]
-    # Iris centers: 468 = left iris, 473 = right iris (478-landmark model)
-    lx, ly = lm[468].x * w, lm[468].y * h
-    rx, ry = lm[473].x * w, lm[473].y * h
-
+    lx, ly, rx, ry = iris
+    w, h = img.size
     cx, cy = (lx + rx) / 2, (ly + ry) / 2
     angle = math.degrees(math.atan2(ry - ly, rx - lx))
     rotated = img.rotate(angle, center=(cx, cy), resample=Image.Resampling.BICUBIC)
 
-    target_x, target_y = w / 2, h * 0.4
+    target_x = w * float(os.environ.get("FACE_ALIGN_X", "0.5"))
+    target_y = h * float(os.environ.get("FACE_ALIGN_Y", "0.4"))
     dx, dy = target_x - cx, target_y - cy
     return rotated.transform(
         rotated.size,
@@ -72,10 +77,36 @@ def _align_face(img: Image.Image) -> Image.Image:
     )
 
 
+def _zoom_face(img: Image.Image) -> Image.Image:
+    """Scale the image so the inter-ocular distance is a fixed fraction of frame width."""
+    iris = _detect_iris(img)
+    if iris is None:
+        return img
+
+    lx, ly, rx, ry = iris
+    w, h = img.size
+    cx, cy = (lx + rx) / 2, (ly + ry) / 2
+    ied = math.hypot(rx - lx, ry - ly)
+
+    target_ratio = float(os.environ.get("FACE_ZOOM_RATIO", "0.25"))
+    scale = (w * target_ratio) / ied
+
+    new_w, new_h = int(w * scale), int(h * scale)
+    scaled = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+    # Paste so the face center stays anchored at its original position
+    paste_x = int(round(cx - cx * scale))
+    paste_y = int(round(cy - cy * scale))
+    out = Image.new("RGB", (w, h))
+    out.paste(scaled, (paste_x, paste_y))
+    return out
+
+
 OPERATIONS: list[dict] = [
     {"id": "grayscale",       "label": "1 · Grayscale",       "fn": _grayscale},
     {"id": "blur_background", "label": "2 · Blur background", "fn": _blur_background},
     {"id": "align_face",      "label": "3 · Align face",      "fn": _align_face},
+    {"id": "zoom_face",       "label": "4 · Zoom face",       "fn": _zoom_face},
 ]
 
 
