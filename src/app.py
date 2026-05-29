@@ -265,7 +265,7 @@ def _create_video(images_dir: Path) -> None:
     for folder in subfolders:
         frames = sorted(
             [f for f in folder.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS],
-            key=lambda f: f.stat().st_mtime,
+            key=lambda f: f.name,
         )
         if not frames:
             continue
