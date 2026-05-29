@@ -222,3 +222,22 @@ A running log of each working session — what was built, why, and any decisions
 - Option to clean up intermediate per-folder video artifacts after merge
 
 ---
+
+### 2026-05-29 — End-of-day sync: frame naming, sort UI, video polish
+
+**Goal:** Consolidate small session entries and update documentation to reflect frame_NNNN naming, EXPORT_SORT, video overwrite behaviour, and key decisions.
+
+**Done:**
+- Updated `docs/project-context.md` with frame_NNNN naming convention, EXPORT_SORT option, video overwrite behaviour, and new key decisions
+- Condensed `docs/session-log.md` by merging remaining small session entries
+- Updated `docs/usage.md` with Frame order selectbox details
+
+**Decisions:**
+- frame_NNNN naming adopted as the standard export frame format
+- EXPORT_SORT option added to control frame ordering in exports
+- Video overwrite behaviour documented as an explicit decision
+
+**Next:**
+- Continue implementing features informed by the updated project context
+
+---
