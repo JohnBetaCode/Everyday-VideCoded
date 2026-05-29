@@ -396,3 +396,20 @@ A running log of each working session — what was built, why, and any decisions
 - Consider adding validation or fallback defaults for malformed env var values
 
 ---
+
+### 2026-05-29 — Fix date stamp visibility in video frames
+
+**Goal:** Make the date stamp survive H.264 compression and remain readable on any background.
+
+**Done:**
+- Added semi-transparent dark background strip behind date stamp text in `src/app.py`
+- Switched font to DejaVu Sans Bold for better legibility at small sizes
+- Fixed stale image reference by capturing return value from `_draw_date` (alpha composite returns a new object)
+
+**Decisions:**
+- Dark background strip chosen over font outline/shadow as a more compression-resilient approach
+
+**Next:**
+- Re-export existing images to pick up the visibility fix
+
+---
