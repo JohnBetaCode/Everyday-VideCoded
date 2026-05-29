@@ -133,21 +133,32 @@ def _render_dir_browser() -> None:
 
 # ── Date overlay helper ───────────────────────────────────────────────────────
 
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    h = hex_color.lstrip("#")
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+
 def _draw_date(img: Image.Image, dt) -> Image.Image:
     w, h = img.size
-    text = dt.strftime("%Y-%m-%d")
-    font_size = max(24, h // 20)
+    text = dt.strftime(os.environ.get("DATE_FORMAT", "%Y-%m-%d"))
+
+    env_size = os.environ.get("DATE_FONT_SIZE")
+    font_size = int(env_size) if env_size else max(24, h // 20)
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
     except OSError:
         font = ImageFont.load_default()
+
+    text_color = _hex_to_rgb(os.environ.get("DATE_TEXT_COLOR", "#FFFFFF"))
+    stroke_color = _hex_to_rgb(os.environ.get("DATE_STROKE_COLOR", "#000000"))
+    stroke_width = int(os.environ.get("DATE_STROKE_WIDTH", "2"))
 
     draw = ImageDraw.Draw(img)
     bbox = draw.textbbox((0, 0), text, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     x = (w - tw) // 2
     y = h - th - max(16, h // 40)
-    draw.text((x, y), text, font=font, fill=(255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0))
+    draw.text((x, y), text, font=font, fill=text_color, stroke_width=stroke_width, stroke_fill=stroke_color)
     return img
 
 
