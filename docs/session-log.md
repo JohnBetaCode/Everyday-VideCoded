@@ -328,3 +328,19 @@ A running log of each working session — what was built, why, and any decisions
 - Add option to open the output video file after creation
 
 ---
+
+### 2026-05-29 — Install ffmpeg in container and handle missing ffmpeg gracefully
+
+**Goal:** Ensure ffmpeg is available in the dev container and that the app degrades gracefully when it is absent.
+
+**Done:**
+- Added ffmpeg installation to `.devcontainer/Dockerfile`
+- Updated `src/app.py` to detect missing ffmpeg and handle the error gracefully
+
+**Decisions:**
+- Handled missing ffmpeg at runtime rather than hard-failing, allowing the app to remain usable without video export capability
+
+**Next:**
+- Test video export end-to-end in the container environment
+
+---
