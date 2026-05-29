@@ -159,7 +159,8 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
         except Exception as exc:
             errors += 1
             st.warning(f"Could not export {src.name}: {exc}")
-        progress.progress((i + 1) / total, text=f"Exporting {i + 1} / {total}…")
+        pct = int((i + 1) / total * 100)
+        progress.progress((i + 1) / total, text=f"Exporting {i + 1} / {total} ({pct}%)…")
 
     progress.empty()
     parts = [f"Exported **{exported}** image(s) to `tmp/`"]
