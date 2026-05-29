@@ -29,9 +29,13 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
 
 <div align="center">
 
-| | | |
-|:-:|:-:|:-:|
-| <img src="https://user-images.githubusercontent.com/43115782/121792040-f7180e00-cbb5-11eb-9722-5200d20b8169.gif" width="300"> | <img src="https://user-images.githubusercontent.com/43115782/121792067-38a8b900-cbb6-11eb-882e-c2ae489e46af.gif" width="300"> | <img src="https://user-images.githubusercontent.com/43115782/121792038-f4b5b400-cbb5-11eb-8700-3cf72b7d07e5.gif" width="300"> |
+<table width="100%">
+  <tr>
+    <td align="center" width="33%"><img src="https://user-images.githubusercontent.com/43115782/121792040-f7180e00-cbb5-11eb-9722-5200d20b8169.gif" width="100%"></td>
+    <td align="center" width="33%"><img src="https://user-images.githubusercontent.com/43115782/121792067-38a8b900-cbb6-11eb-882e-c2ae489e46af.gif" width="100%"></td>
+    <td align="center" width="33%"><img src="https://user-images.githubusercontent.com/43115782/121792038-f4b5b400-cbb5-11eb-8700-3cf72b7d07e5.gif" width="100%"></td>
+  </tr>
+</table>
 
 </div>
 
