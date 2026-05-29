@@ -204,8 +204,13 @@ def _create_video(images_dir: Path) -> None:
         str(output),
     ]
 
-    with st.spinner(f"Creating video — {len(frames)} frames at {fps} fps…"):
-        result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        with st.spinner(f"Creating video — {len(frames)} frames at {fps} fps…"):
+            result = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        list_file.unlink(missing_ok=True)
+        st.error("ffmpeg not found. Install it with `sudo apt-get install ffmpeg` or rebuild the container.")
+        return
 
     list_file.unlink(missing_ok=True)
 
