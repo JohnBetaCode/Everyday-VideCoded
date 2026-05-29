@@ -153,3 +153,21 @@ A running log of each working session — what was built, why, and any decisions
 - Filter images by year or date range in the GUI
 
 ---
+
+### 2026-05-29 — Consolidate session log and sync all docs
+
+**Goal:** Replace 13 fragmented auto-hook session entries with one comprehensive entry and sync README, project-context, and usage docs to reflect completed work.
+
+**Done:**
+- Consolidated 13 small auto-hook session log entries into a single comprehensive session entry in `docs/session-log.md`
+- Updated `README.md` with video creation workflow, date stamp feature, and new env vars
+- Updated `docs/project-context.md` with current project state and completed goals
+- Updated `docs/usage.md` with date stamp configuration and new env var documentation
+
+**Decisions:**
+- Chose to consolidate fragmented auto-hook entries into a single session log entry for readability rather than keeping the granular auto-generated history
+
+**Next:**
+- Continue building on the video creation and date stamp features now that docs are current
+
+---
