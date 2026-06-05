@@ -2,6 +2,24 @@
 
 > A "face every day" maker — browse years of daily self-portraits, align faces automatically, and export a timelapse that shows how you change over time.
 
+---
+
+> *"Because nothing says 'I love myself' quite like photographing your own face every single day — and nothing says 'I respect the passage of time' quite like compressing a decade of decay into a 12-second video."*
+
+**For those brave enough to document the journey:**
+You started this because you were young and beautiful and thought it would be cool to have a timelapse of yourself glowing up.
+You will finish this — or rather, stop updating it — the day the mirror stops being your friend.
+
+**For those who just stumbled onto someone else's timelapse:**
+Welcome. You came for the technology. You stayed for the existential dread.
+Watch carefully around the eyes. That's where time does its best work.
+
+This tool is for narcissists with discipline, philosophers with cameras, and anyone who has ever looked in the mirror and thought: *"I should document this moment of peak human condition before entropy wins."*
+
+Entropy always wins. But at least you'll have footage.
+
+---
+
 Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode/Face-every-day-maker) with a proper web GUI, GPU-accelerated CV pipeline, and a clean dev container.
 
 <p align="center">
