@@ -111,7 +111,7 @@ A **Frame order** selectbox appears in the sidebar above the Export button with 
 
 - EXIF data and file modification time are carried over from the original photo.
 - Each frame is stamped with its capture date (`YYYY-MM-DD`) at the **top centre** using a bold white font on a semi-transparent dark strip. When sort is **Filename (A→Z)** the date is parsed directly from the filename when possible, falling back to EXIF/mtime (see [Filename date parsing](#filename-date-parsing) below).
-- If `EXPORT_WIDTH` and `EXPORT_HEIGHT` are both set, every frame is scaled to **cover** that resolution (aspect ratio preserved) and **center-cropped** to fit exactly — no distortion, no letterboxing. Frames from different cameras or aspect ratios are all normalised to the same canvas. Leave both empty to keep each frame at its own processed size.
+- Before the pipeline runs, every image is normalised to a consistent canvas: scaled to cover the target size (aspect ratio preserved) and center-cropped. The target size is taken from `EXPORT_WIDTH`/`EXPORT_HEIGHT` if set, otherwise auto-detected from the first image in the batch. This guarantees that face alignment, zoom, and all other ops always operate on a uniform frame size.
 - Images where no face is detected are skipped (not exported).
 - Existing files are overwritten.
 
@@ -119,12 +119,17 @@ A progress bar shows `N / total (%)` while running. On completion a summary repo
 
 ### Frame size normalisation
 
+Normalisation happens at **read time** — before the pipeline runs — so every op (align, zoom, blur) always sees a consistent canvas. The same crop is applied in the live preview so what you see matches what gets exported.
+
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `EXPORT_WIDTH` | _(off)_ | Target frame width in pixels |
-| `EXPORT_HEIGHT` | _(off)_ | Target frame height in pixels |
+| `EXPORT_WIDTH` | _(auto)_ | Target frame width in pixels |
+| `EXPORT_HEIGHT` | _(auto)_ | Target frame height in pixels |
 
-Both must be set together. The image is scaled so its shorter dimension covers the target, then center-cropped. Example for a 9:16 portrait format: `EXPORT_WIDTH=1080`, `EXPORT_HEIGHT=1920`.
+- **Both set** → every frame is cover-scaled and center-cropped to that exact size.
+- **Neither set** (default) → the first image's post-rotation dimensions are used as the reference; all other frames are cropped to match.
+
+Example for a 9:16 portrait format: `EXPORT_WIDTH=1080`, `EXPORT_HEIGHT=1920`.
 
 ### Date stamp options
 

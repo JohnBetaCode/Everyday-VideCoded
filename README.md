@@ -158,8 +158,8 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | `EXPORT_PATH` | `tmp/` | Root export folder; images go to `EXPORT_PATH/images/<folder>/`. |
 | `EXPORT_WORKERS` | `4` | Parallel worker threads for export. |
 | `EXPORT_SORT` | `name` | Frame ordering within each folder: `name` (A→Z), `date_created` (EXIF), `date_modified` (mtime). |
-| `EXPORT_WIDTH` | _(off)_ | Output frame width in pixels. Must be set together with `EXPORT_HEIGHT`. |
-| `EXPORT_HEIGHT` | _(off)_ | Output frame height in pixels. When both dimensions are set, frames are scaled to cover and center-cropped — aspect ratio preserved, no distortion. |
+| `EXPORT_WIDTH` | _(auto)_ | Output frame width in pixels. When both are set, used as the normalisation target; otherwise the first image's dimensions are used automatically. |
+| `EXPORT_HEIGHT` | _(auto)_ | Output frame height in pixels. Frames are cover-scaled and center-cropped at read time — before the pipeline runs — so all ops see a consistent canvas. |
 | `EXPORT_DEBUG` | _(off)_ | Set to `1` to enable debug overlay (green metadata block instead of date stamp). Also togglable in the sidebar. |
 | `VIDEO_NAME` | `timelapse` | Output video filename (without extension). |
 | `VIDEO_EXTENSION` | `mp4` | Video container format. |

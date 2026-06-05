@@ -296,6 +296,7 @@ def _sorted_entries(entries: list[dict], sort: str) -> list[dict]:
 def _process_one(
     entry: dict, frame_idx: int, pad: int,
     enabled_ops: set[str], op_params: dict, out_dir: Path, sort: str = "name",
+    target_size: tuple[int, int] | None = None,
 ) -> tuple[str, str]:
     src = Path(entry["path"])
     dest_dir = out_dir / src.parent.name
@@ -305,11 +306,9 @@ def _process_one(
             orig.load()
             frame = ImageOps.exif_transpose(orig).copy()
             exif_bytes = frame.info.get("exif", b"")
+        if target_size:
+            frame = _crop_to_fit(frame, *target_size)
         result = run_pipeline(frame, enabled_ops, op_params)
-        _ew = os.environ.get("EXPORT_WIDTH", "").strip()
-        _eh = os.environ.get("EXPORT_HEIGHT", "").strip()
-        if _ew and _eh:
-            result = _crop_to_fit(result, int(_ew), int(_eh))
         filename_date = _date_from_filename(src.name) if sort == "name" else None
         display_date = filename_date if filename_date is not None else entry["date"]
         if os.environ.get("EXPORT_DEBUG", "").strip().lower() in ("1", "true", "yes"):
@@ -345,6 +344,23 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
         for idx, entry in enumerate(ordered, 1):
             tasks.append((entry, idx, pad))
 
+    # Resolve the normalisation target: env vars take priority, otherwise
+    # use the first image's post-transpose dimensions as the reference canvas.
+    _ew = os.environ.get("EXPORT_WIDTH", "").strip()
+    _eh = os.environ.get("EXPORT_HEIGHT", "").strip()
+    if _ew and _eh:
+        target_size: tuple[int, int] | None = (int(_ew), int(_eh))
+    else:
+        target_size = None
+        if tasks:
+            try:
+                with Image.open(tasks[0][0]["path"]) as ref:
+                    ref.load()
+                    ref = ImageOps.exif_transpose(ref)
+                    target_size = ref.size
+            except Exception:
+                pass
+
     total = len(tasks)
     exported = skipped = errors = 0
     warnings: list[str] = []
@@ -353,7 +369,7 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
     workers = min(int(os.environ.get("EXPORT_WORKERS", "4")), total)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(_process_one, entry, frame_idx, pad, enabled_ops, op_params, out_dir, sort): entry
+            executor.submit(_process_one, entry, frame_idx, pad, enabled_ops, op_params, out_dir, sort, target_size): entry
             for entry, frame_idx, pad in tasks
         }
         for i, future in enumerate(as_completed(futures)):
@@ -583,7 +599,7 @@ with st.sidebar:
         enabled_ops: set[str] = set()
         op_params: dict[str, dict] = {}
         for op in OPERATIONS:
-            if st.checkbox(op["label"], key=f"op_{op['id']}"):
+            if st.checkbox(op["label"], key=f"op_{op['id']}", value=True):
                 enabled_ops.add(op["id"])
                 if op.get("params"):
                     op_params[op["id"]] = {}
@@ -669,6 +685,10 @@ st.slider("Image position", 0, n - 1, key="idx", label_visibility="collapsed")
 
 try:
     img = ImageOps.exif_transpose(Image.open(img_info["path"]))
+    _pew = os.environ.get("EXPORT_WIDTH", "").strip()
+    _peh = os.environ.get("EXPORT_HEIGHT", "").strip()
+    if _pew and _peh:
+        img = _crop_to_fit(img, int(_pew), int(_peh))
 except Exception as exc:
     st.error(f"Cannot open image: {exc}")
     st.stop()
