@@ -186,5 +186,7 @@ Click **🎬 Create video** to assemble all frames in `<EXPORT_PATH>/images/` in
 | `VIDEO_EXTENSION` | `mp4` | Container format |
 | `VIDEO_FPS` | `24` | Frames per second |
 | `VIDEO_CODEC` | `libx264` | ffmpeg video codec |
+| `VIDEO_WIDTH` | `1920` | Output video frame width in pixels |
+| `VIDEO_HEIGHT` | `1080` | Output video frame height in pixels |
 
 > **Tip:** Run **⬇ Export all** before **🎬 Create video** to make sure the `images/` folder is up to date with your current pipeline settings.

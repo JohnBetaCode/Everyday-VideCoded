@@ -183,6 +183,8 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | `VIDEO_EXTENSION` | `mp4` | Video container format. |
 | `VIDEO_FPS` | `24` | Frames per second. |
 | `VIDEO_CODEC` | `libx264` | ffmpeg video codec. |
+| `VIDEO_WIDTH` | `1920` | Video output frame width in pixels. |
+| `VIDEO_HEIGHT` | `1080` | Video output frame height in pixels. |
 | `DATE_FORMAT` | `%Y-%m-%d` | strftime format for the date stamp on exported frames. |
 | `DATE_FONT_SIZE` | _(auto)_ | Font size in px; leave empty to scale with image height. |
 | `DATE_TEXT_COLOR` | `#FFFFFF` | Date stamp text colour (hex). |

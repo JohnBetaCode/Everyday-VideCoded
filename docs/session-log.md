@@ -241,3 +241,30 @@ A running log of each working session — what was built, why, and any decisions
 - Continue implementing features informed by the updated project context
 
 ---
+
+### 2026-06-05 — Filename date parsing, frame size normalisation, debug mode, and video resolution
+
+**Goal:** Add the remaining core features: parse dates from filenames, normalise all frames to a consistent canvas before the pipeline runs, add a debug overlay for verifying date metadata, and expose video output resolution as env vars.
+
+**Done:**
+- **Filename date parsing** (`_FILENAME_DATE_PATTERNS` in `app.py`): when sort=name, three patterns tried in order — `WP_YYYYMMDD_HH_MM_SS_*`, `WIN_YYYYMMDD_HHMMSS`, isolated `YYYYMMDD` block; falls back to EXIF → mtime if none match; parsed date used for the frame's date stamp
+- **Debug export mode** (`_draw_debug_dates` in `app.py`): toggled via `EXPORT_DEBUG=1` env var or the sidebar checkbox; replaces the normal date stamp with a green diagnostic block showing filename, filename-parsed date, all EXIF DateTime fields, file mtime/ctime, and active sort mode; useful for verifying date metadata before a full export run
+- **Export frame size normalisation** (`_crop_to_fit` in `app.py`, `_export_all`): every exported frame is cover-scaled and center-cropped to `EXPORT_WIDTH×EXPORT_HEIGHT`; if env vars are not set, the first image's post-rotation dimensions are used as the reference canvas so all frames in a batch are the same size
+- **Normalisation moved to read time** (before the pipeline): pipeline ops (align, zoom, blur) now always see a consistent canvas; previously normalisation happened after the pipeline, which caused misaligned faces on frames that differed in aspect ratio
+- **Same crop in GUI preview** (`app.py` lines 704–707): `_crop_to_fit` is applied when rendering the preview image, so the form factor displayed in the browser matches what will be exported; slider tuning in the preview now accurately reflects export output
+- **Configurable video resolution** (`VIDEO_WIDTH`/`VIDEO_HEIGHT` in `_create_video`): ffmpeg `scale+pad` filter applied to final video; defaults to 1920×1080; even dimensions enforced for h264 compatibility
+- **Better ffmpeg error display**: stderr output truncated to first 2000 + last 500 chars to keep the Streamlit error panel readable on failure
+- Added `EXPORT_WIDTH`, `EXPORT_HEIGHT`, `EXPORT_DEBUG`, `VIDEO_WIDTH`, `VIDEO_HEIGHT` to `configs/.env.example`
+- Synced all docs with the session's work
+
+**Decisions:**
+- Normalisation at read time, not after pipeline — pipeline ops must see a consistent canvas or face alignment and zoom produce wrong results on mixed-aspect-ratio batches
+- GUI preview applies the same crop as export — so what you tune on screen is what you get in the output file
+- `VIDEO_WIDTH`/`VIDEO_HEIGHT` kept separate from `EXPORT_WIDTH`/`EXPORT_HEIGHT` — final video resolution and per-frame processing canvas are independent concerns
+- ffmpeg stderr truncation: first 2000 chars catches the preamble and codec info; last 500 chars captures the actual error that stops encoding
+
+**Next:**
+- Filter images by year or date range in the GUI
+- Async/cached scanning for large collections
+
+---

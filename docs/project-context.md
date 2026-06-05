@@ -23,7 +23,9 @@ This file is the single source of truth for the project's current state. Update 
 - [x] Batch export of processed images with original filenames and dates
 - [x] Date stamp (capture date) overlaid on every exported frame
 - [x] Timelapse video export via ffmpeg
-- [ ] Filename-based date parsing as a third fallback
+- [x] Filename-based date parsing as a third fallback (WP_/WIN_/YYYYMMDD patterns)
+- [x] Export frame size normalisation (EXPORT_WIDTH/HEIGHT, cover-crop at read time)
+- [x] Debug export mode (green diagnostic overlay with all date metadata)
 
 ---
 
@@ -102,13 +104,17 @@ docs/
   - Preserves EXIF bytes and sets file mtime to original photo date
   - Images with no face detected are skipped, not exported
   - Progress bar shows `N / total (%)`
-  - Each frame stamped with capture date at bottom centre (`_draw_date`); configurable via `DATE_*` env vars
+  - Each frame stamped with capture date at top centre (`_draw_date`); configurable via `DATE_*` env vars
+  - **Frame size normalisation**: at read time, every image is cover-scaled and center-cropped to `EXPORT_WIDTH×EXPORT_HEIGHT`; falls back to first image's post-rotation dimensions if env vars not set; same crop applied in the live GUI preview so displayed form factor matches export
+  - **Filename date parsing** (sort=name): date parsed from filename before EXIF/mtime fallback; patterns: `WP_YYYYMMDD_HH_MM_SS_*`, `WIN_YYYYMMDD_HHMMSS`, plain `YYYYMMDD`
+  - **Debug export mode** (`EXPORT_DEBUG=1` or sidebar checkbox): replaces date stamp with green diagnostic overlay showing all EXIF dates, filesystem timestamps, filename-parsed date, and active sort mode
 - Video creation (`🎬 Create video` button in sidebar):
   - Builds one video per subfolder in `EXPORT_PATH/images/`; frames sorted A→Z by filename (`frame_0001`, `frame_0002` …)
   - Merges all per-folder videos into `EXPORT_PATH/VIDEO_NAME.VIDEO_EXTENSION` via ffmpeg concat stream copy
   - Existing videos overwritten silently (`-y` flag)
-  - Configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`
-  - Shows warning if export folder has no subfolders; surfaces ffmpeg stderr on failure
+  - Configurable via `VIDEO_NAME`, `VIDEO_EXTENSION`, `VIDEO_FPS`, `VIDEO_CODEC`, `VIDEO_WIDTH`, `VIDEO_HEIGHT`
+  - Output scaled to `VIDEO_WIDTH×VIDEO_HEIGHT` (default 1920×1080) via ffmpeg `scale+pad` filter; even dimensions enforced for h264
+  - Shows warning if export folder has no subfolders; ffmpeg stderr truncated and surfaced on failure
 - Session management:
   - Browse "Select" replaces the text area (not appends) to prevent accidental path accumulation
   - After a successful load, text area resets to exactly the scanned paths; shows message if previous session was replaced
@@ -117,9 +123,7 @@ docs/
 
 ## In Progress
 
-| Feature | Notes |
-|---------|-------|
-| Filename date parsing | Third fallback after EXIF and mtime. Format TBD. |
+Nothing currently in progress.
 
 ---
 
@@ -127,14 +131,12 @@ docs/
 
 - Filter images by year or custom date range in the GUI
 - Thumbnail strip / calendar heatmap view
-- Filename date parsing (e.g. `2024-03-15_selfie.jpg`, `IMG_20240315.jpg`)
 - Async/cached folder scanning for large collections
 
 ---
 
 ## Known Issues / Constraints
 
-- Filename-based date parsing not yet implemented — all date extraction relies on EXIF or file mtime.
 - Very large folders may feel slow to scan (no async/caching yet).
 - Streamlit's file input doesn't support native OS folder picker; folder path must be typed/pasted.
 - Blur background (~1–3s/image on CPU, ~0.3s on GPU) — not suitable for fast browsing; best applied selectively.
@@ -177,6 +179,12 @@ docs/
 | 2026-05-29 | `frame_NNNN` naming scoped per folder | Each source folder has an independent sequence; avoids global numbering conflicts when multiple folders are loaded |
 | 2026-05-29 | `name` as default `EXPORT_SORT` | Safest fallback when EXIF may be absent or unreliable; A→Z on `frame_NNNN` names always gives correct video order |
 | 2026-05-29 | GUI selectbox for sort order seeds from env var | Env var sets the launch default; per-session override available without touching config files |
+| 2026-06-05 | Filename date parsing from WP_/WIN_/YYYYMMDD patterns | Many phone cameras embed dates in filenames; parsing them avoids relying on EXIF which can be stripped or wrong |
+| 2026-06-05 | Frame size normalisation at read time (before pipeline) | Pipeline ops (align, zoom) must see a consistent canvas; normalising after the pipeline would misalign faces on variably-cropped frames |
+| 2026-06-05 | Same `_crop_to_fit` applied in GUI preview | GUI and export must show the same form factor; without this, sliders tuned in preview produce different results in the exported frames |
+| 2026-06-05 | Debug export mode as checkbox + env var | Lets users verify which date will stamp each frame before committing to a full export; env var `EXPORT_DEBUG=1` for scripted runs |
+| 2026-06-05 | `VIDEO_WIDTH`/`VIDEO_HEIGHT` separate from `EXPORT_WIDTH`/`EXPORT_HEIGHT` | Export frame size and final video resolution are independent concerns; video may need a different resolution target than the per-frame processing canvas |
+| 2026-06-05 | ffmpeg stderr truncated to first 2000 + last 500 chars | Full ffmpeg output on failure can exceed 10 000 chars; truncated display keeps the error readable in the Streamlit UI without losing the tail where the actual error usually appears |
 
 ---
 
@@ -199,11 +207,17 @@ See `configs/.env.example` for the full list.
 | `FACE_ALIGN_Y` | Vertical target position of face centre, 0.0–1.0 (default: 0.4) |
 | `FACE_ZOOM_RATIO` | Target inter-ocular distance as fraction of frame width (default: 0.25) |
 | `EXPORT_PATH` | Root export folder; images saved to `EXPORT_PATH/images/<folder>/` (default: `tmp/`) |
+| `EXPORT_WORKERS` | Parallel export thread count (default: 4) |
 | `EXPORT_SORT` | Frame numbering order: `name` (default) / `date_created` / `date_modified` |
+| `EXPORT_WIDTH` | Export frame width in pixels; when both set, images are cover-scaled + center-cropped to this size |
+| `EXPORT_HEIGHT` | Export frame height in pixels; same crop applied to GUI preview for consistency |
+| `EXPORT_DEBUG` | Set to `1` to replace date stamp with green diagnostic metadata overlay |
 | `VIDEO_NAME` | Output video filename without extension (default: `timelapse`) |
 | `VIDEO_EXTENSION` | Video container format (default: `mp4`) |
 | `VIDEO_FPS` | Frames per second (default: `24`) |
 | `VIDEO_CODEC` | ffmpeg video codec (default: `libx264`) |
+| `VIDEO_WIDTH` | Video output width in pixels (default: `1920`) |
+| `VIDEO_HEIGHT` | Video output height in pixels (default: `1080`) |
 | `DATE_FORMAT` | strftime format for the date stamp (default: `%Y-%m-%d`) |
 | `DATE_FONT_SIZE` | Font size in px; empty = auto-scale with image height |
 | `DATE_TEXT_COLOR` | Date stamp text colour in hex (default: `#FFFFFF`) |
