@@ -7,5 +7,12 @@
   "postCreateCommand": "mkdir -p /media /mnt /run/media",
   "containerEnv": {
     "WAYLAND_DISPLAY": ""
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Anthropic.claude-code"
+      ]
+    }
   }
 }

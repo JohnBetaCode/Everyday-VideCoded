@@ -415,6 +415,15 @@ def _create_video(images_dir: Path) -> None:
     name = os.environ.get("VIDEO_NAME", "timelapse")
     ext = os.environ.get("VIDEO_EXTENSION", "mp4").lstrip(".")
     codec = os.environ.get("VIDEO_CODEC", "libx264")
+    video_w = int(os.environ.get("VIDEO_WIDTH", "1920"))
+    video_h = int(os.environ.get("VIDEO_HEIGHT", "1080"))
+    # Ensure even dimensions (h264 requirement)
+    video_w -= video_w % 2
+    video_h -= video_h % 2
+    scale_filter = (
+        f"scale={video_w}:{video_h}:force_original_aspect_ratio=decrease,"
+        f"pad={video_w}:{video_h}:(ow-iw)/2:(oh-ih)/2"
+    )
 
     subfolders = sorted([d for d in images_dir.iterdir() if d.is_dir()]) if images_dir.is_dir() else []
     if not subfolders:
@@ -432,14 +441,19 @@ def _create_video(images_dir: Path) -> None:
             continue
 
         list_file = images_dir.parent / f"_ffmpeg_{folder.name}.txt"
-        list_file.write_text("\n".join(f"file '{f.resolve()}'" for f in frames))
+        frame_duration = 1 / fps
+        concat_lines = []
+        for f in frames:
+            concat_lines.append(f"file '{f.resolve()}'")
+            concat_lines.append(f"duration {frame_duration:.6f}")
+        list_file.write_text("\n".join(concat_lines))
         folder_video = images_dir.parent / f"{folder.name}.{ext}"
 
         result = _ffmpeg([
             "ffmpeg", "-y",
-            "-r", str(fps), "-f", "concat", "-safe", "0", "-i", str(list_file),
-            "-c:v", codec, "-pix_fmt", "yuv420p",
-            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-f", "concat", "-safe", "0", "-i", str(list_file),
+            "-c:v", codec, "-pix_fmt", "yuv420p", "-r", str(fps),
+            "-vf", scale_filter,
             str(folder_video),
         ], f"Creating `{folder.name}` — {len(frames)} frames…")
 
@@ -448,7 +462,9 @@ def _create_video(images_dir: Path) -> None:
         if result is None:
             return
         if result.returncode != 0:
-            st.error(f"ffmpeg error (`{folder.name}`):\n```\n{result.stderr[-1000:]}\n```")
+            stderr = result.stderr
+            display = stderr[:2000] + ("\n…\n" + stderr[-500:] if len(stderr) > 2500 else "")
+            st.error(f"ffmpeg error (`{folder.name}`):\n```\n{display}\n```")
             return
 
         st.info(f"`{folder.name}` — {len(frames)} frames done")
