@@ -110,7 +110,7 @@ A **Frame order** selectbox appears in the sidebar above the Export button with 
 | Date modified | `date_modified` | By file modification time |
 
 - EXIF data and file modification time are carried over from the original photo.
-- Each frame is stamped with its capture date (`YYYY-MM-DD`) at the bottom centre using a bold white font on a semi-transparent dark strip.
+- Each frame is stamped with its capture date (`YYYY-MM-DD`) at the **top centre** using a bold white font on a semi-transparent dark strip. When sort is **Filename (A→Z)** the date is parsed directly from the filename when possible, falling back to EXIF/mtime (see [Filename date parsing](#filename-date-parsing) below).
 - Images where no face is detected are skipped (not exported).
 - Existing files are overwritten.
 
@@ -126,14 +126,39 @@ A progress bar shows `N / total (%)` while running. On completion a summary repo
 | `DATE_STROKE_COLOR` | `#000000` | Outline colour in hex |
 | `DATE_STROKE_WIDTH` | `2` | Outline thickness in pixels |
 
+### Filename date parsing
+
+When **Frame order** is set to **Filename (A→Z)**, the app attempts to extract the capture date directly from the filename before falling back to EXIF/mtime. The following patterns are tried in order:
+
+| Pattern | Example | Extracted date |
+|---------|---------|----------------|
+| `YYYYMMDD_HH_MM_SS` | `WP_20140525_09_31_43_Pro.jpg` | 2014-05-25 09:31:43 |
+| `YYYYMMDD_HHMMSS` | `WIN_20140426_123943.JPG` | 2014-04-26 12:39:43 |
+| `YYYYMMDD` (isolated 8-digit block) | `20140426_edit.jpg` | 2014-04-26 |
+
+If none of the patterns match (e.g. `IMG_0001.JPG`), the date falls back to EXIF data → file mtime, same as other sort modes.
+
+### Debug export mode
+
+Enable via the **Debug export mode** checkbox in the sidebar (or `EXPORT_DEBUG=1` in `configs/.env`). When active, the normal date stamp is replaced by a green diagnostic overlay in the top-left corner showing:
+
+- **File name** — original filename
+- **Filename date** — result of the filename parser (`not parseable` if no pattern matched)
+- **EXIF DateTime / DateTimeOriginal / DateTimeDigitized** — all available EXIF date fields
+- **File modified / File ctime** — filesystem timestamps
+- **Export sort** — the active sort mode
+
+Use this to verify which date will appear on each frame before committing to a full export.
+
 ---
 
 ## Creating a video
 
 Click **🎬 Create video** to assemble all frames in `<EXPORT_PATH>/images/` into a timelapse video.
 
-- One video is created **per source folder** (e.g. `tmp/2023.mp4`, `tmp/2024.mp4`), then all folder videos are **merged into a single final video** (`tmp/timelapse.mp4`).
-- Frames within each folder video are ordered by file modification time (= original photo date).
+- One video is created **per source folder** (e.g. `tmp/2023.mp4`, `tmp/2024.mp4`) and kept alongside the final output — these are not deleted after the merge.
+- All folder videos are then **merged into a single final video** (`tmp/timelapse.mp4`).
+- Frames within each folder video are ordered alphabetically by frame filename (which reflects the export sort order chosen at export time).
 - If the images folder has no subfolders, a warning is shown and nothing happens.
 - The final merged video is saved to `<EXPORT_PATH>/<VIDEO_NAME>.<VIDEO_EXTENSION>` (default: `tmp/timelapse.mp4`).
 

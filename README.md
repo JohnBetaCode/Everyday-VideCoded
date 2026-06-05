@@ -58,8 +58,9 @@ Rebuilt from scratch from [Face-every-day-maker](https://github.com/JohnBetaCode
   - Each op exposes its parameters as **live sliders** seeded from env vars; changes apply instantly
   - If no face is detected a warning is shown and the processed frame is left empty
   - When multiple faces are present the largest (by landmark bounding box) is used
-- **Batch export** — processes all loaded images through the active pipeline, names them `frame_0001.jpg`, `frame_0002.jpg` … per folder (sort order configurable), stamps each frame with its capture date at the bottom centre
-- **Video creation** — one video per source subfolder, then merged into a final timelapse via ffmpeg
+- **Batch export** — processes all loaded images through the active pipeline, names them `frame_0001.jpg`, `frame_0002.jpg` … per folder (sort order configurable), stamps each frame with its capture date at the top centre; when sort is by filename the date is parsed directly from the filename when possible (supports `WIN_YYYYMMDD_HHMMSS`, `WP_YYYYMMDD_HH_MM_SS_*`, and plain `YYYYMMDD` patterns), falling back to EXIF/mtime
+- **Debug export mode** — toggle in the sidebar or via `EXPORT_DEBUG=1`; replaces the normal date stamp with a green diagnostic overlay showing all EXIF date fields, file mtime/ctime, the parsed filename date, and the active sort mode
+- **Video creation** — one video per source subfolder (kept alongside the final output), then merged into a single timelapse via ffmpeg; concat files use absolute paths to avoid resolution errors with relative `EXPORT_PATH` values
 - **GPU support** — NVIDIA GPU passthrough via `nvidia-container-toolkit`; CPU fallback for every op
 
 ---
@@ -136,7 +137,7 @@ Then open [http://localhost:8501](http://localhost:8501).
 2. Click **Load Images**.
 3. Use **◀ / ▶** or the slider to navigate.
 4. Toggle CV pipeline operations in the sidebar — processed result appears on the right. Adjust each op's parameters with the sliders that appear below its checkbox.
-5. Click **⬇ Export all** to save all processed images to `EXPORT_PATH/images/`. Each frame gets a date stamp at the bottom centre.
+5. Click **⬇ Export all** to save all processed images to `EXPORT_PATH/images/`. Each frame gets a date stamp at the top centre. Choose the **Frame order** and optionally enable **Debug export mode** in the sidebar before exporting.
 6. Click **🎬 Create video** to assemble the exported frames into a timelapse video.
 
 See [docs/usage.md](docs/usage.md) for a full walkthrough.
@@ -155,7 +156,9 @@ Copy `configs/.env.example` to `configs/.env` and set values for your local setu
 | `FACE_ALIGN_Y` | `0.4` | Vertical target position of the face centre (0.0–1.0). `0.4` = slightly above centre. |
 | `FACE_ZOOM_RATIO` | `0.25` | Target inter-ocular distance as a fraction of frame width. Lower = zoom out (more body). |
 | `EXPORT_PATH` | `tmp/` | Root export folder; images go to `EXPORT_PATH/images/<folder>/`. |
+| `EXPORT_WORKERS` | `4` | Parallel worker threads for export. |
 | `EXPORT_SORT` | `name` | Frame ordering within each folder: `name` (A→Z), `date_created` (EXIF), `date_modified` (mtime). |
+| `EXPORT_DEBUG` | _(off)_ | Set to `1` to enable debug overlay (green metadata block instead of date stamp). Also togglable in the sidebar. |
 | `VIDEO_NAME` | `timelapse` | Output video filename (without extension). |
 | `VIDEO_EXTENSION` | `mp4` | Video container format. |
 | `VIDEO_FPS` | `24` | Frames per second. |

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import re
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -120,13 +123,44 @@ def _render_dir_browser() -> None:
     col_sel, col_cancel = st.columns(2)
     with col_sel:
         if st.button("✓ Select", type="primary", width="stretch"):
-            st.session_state.folder_paths_text = str(cwd)
+            st.session_state._folder_paths_next = str(cwd)
             st.session_state.fb_open = False
             st.rerun()
     with col_cancel:
         if st.button("✗ Cancel", width="stretch"):
             st.session_state.fb_open = False
             st.rerun()
+
+
+# ── Filename date parsing ─────────────────────────────────────────────────────
+
+# Each entry: (compiled regex, strptime format string, group-join function)
+# Tried in order; first match wins. strptime validates the values.
+_FILENAME_DATE_PATTERNS: list[tuple] = [
+    # WP_20140525_09_31_43_Pro.jpg — time as separate underscore-delimited groups
+    (re.compile(r'(\d{8})_(\d{2})_(\d{2})_(\d{2})(?!\d)'),
+     "%Y%m%d%H%M%S",
+     lambda m: m.group(1) + m.group(2) + m.group(3) + m.group(4)),
+    # WIN_20140426_123943.jpg — compact 6-digit time block
+    (re.compile(r'(\d{8})_(\d{6})(?!\d)'),
+     "%Y%m%d%H%M%S",
+     lambda m: m.group(1) + m.group(2)),
+    # date-only fallback: any isolated 8-digit sequence (e.g. 20140426)
+    (re.compile(r'(?<!\d)(\d{8})(?!\d)'),
+     "%Y%m%d",
+     lambda m: m.group(1)),
+]
+
+
+def _date_from_filename(name: str) -> datetime | None:
+    for pattern, fmt, joiner in _FILENAME_DATE_PATTERNS:
+        m = pattern.search(name)
+        if m:
+            try:
+                return datetime.strptime(joiner(m), fmt)
+            except ValueError:
+                continue
+    return None
 
 
 # ── Date overlay helper ───────────────────────────────────────────────────────
@@ -140,7 +174,7 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
     w, h = img.size
     text = dt.strftime(os.environ.get("DATE_FORMAT", "%Y-%m-%d"))
 
-    env_size = os.environ.get("DATE_FONT_SIZE")
+    env_size = os.environ.get("DATE_FONT_SIZE", "").strip()
     font_size = int(env_size) if env_size else max(24, h // 20)
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
@@ -157,17 +191,84 @@ def _draw_date(img: Image.Image, dt) -> Image.Image:
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     pad = max(12, h // 50)
     x = (w - tw) // 2
-    y = h - th - pad
+    y = pad
 
     # Semi-transparent dark background strip for readability in video
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(overlay).rectangle([0, y - pad, w, h], fill=(0, 0, 0, 160))
+    ImageDraw.Draw(overlay).rectangle([0, 0, w, y + th + pad], fill=(0, 0, 0, 160))
     img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
     ImageDraw.Draw(img).text(
         (x, y), text, font=font, fill=text_color,
         stroke_width=stroke_width, stroke_fill=stroke_color,
     )
+    return img
+
+
+# EXIF tag IDs for all DateTime fields (standard values, never change)
+_EXIF_DATE_TAGS = {
+    306:   "EXIF DateTime",
+    36867: "EXIF DateTimeOriginal",
+    36868: "EXIF DateTimeDigitized",
+}
+
+
+def _draw_debug_dates(img: Image.Image, src: Path, sort: str = "name",
+                      filename_date: datetime | None = None) -> Image.Image:
+    fn_tag = filename_date.strftime("%Y-%m-%d %H:%M:%S") if filename_date else "not parseable"
+    lines: list[str] = [
+        f"File name:      {src.name}",
+        f"Filename date:  {fn_tag}",
+    ]
+
+    try:
+        with Image.open(src) as raw:
+            exif = raw.getexif()
+            for tag_id, label in _EXIF_DATE_TAGS.items():
+                raw_val = exif.get(tag_id)
+                if raw_val:
+                    try:
+                        dt = datetime.strptime(raw_val, "%Y:%m:%d %H:%M:%S")
+                        lines.append(f"{label}: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                    except (ValueError, TypeError):
+                        pass
+    except Exception:
+        pass
+
+    try:
+        stat = src.stat()
+        lines.append(f"File modified:  {datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"File ctime:     {datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}")
+    except Exception:
+        pass
+
+    lines.append(f"Export sort:    {sort}")
+
+    if not lines:
+        return img
+
+    w, h = img.size
+    font_size = max(18, h // 35)
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+    except OSError:
+        font = ImageFont.load_default()
+
+    pad = max(8, h // 70)
+    line_gap = max(4, h // 120)
+    dummy = ImageDraw.Draw(img)
+    line_h = dummy.textbbox((0, 0), "A", font=font)[3] + line_gap
+    strip_h = pad + len(lines) * line_h + pad
+
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(overlay).rectangle([0, 0, w, strip_h], fill=(0, 0, 0, 160))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+
+    draw = ImageDraw.Draw(img)
+    for i, line in enumerate(lines):
+        draw.text((pad, pad + i * line_h), line, font=font, fill=(0, 255, 0),
+                  stroke_width=1, stroke_fill=(0, 0, 0))
+
     return img
 
 
@@ -183,7 +284,7 @@ def _sorted_entries(entries: list[dict], sort: str) -> list[dict]:
 
 def _process_one(
     entry: dict, frame_idx: int, pad: int,
-    enabled_ops: set[str], op_params: dict, out_dir: Path,
+    enabled_ops: set[str], op_params: dict, out_dir: Path, sort: str = "name",
 ) -> tuple[str, str]:
     src = Path(entry["path"])
     dest_dir = out_dir / src.parent.name
@@ -194,7 +295,12 @@ def _process_one(
             frame = ImageOps.exif_transpose(orig).copy()
             exif_bytes = frame.info.get("exif", b"")
         result = run_pipeline(frame, enabled_ops, op_params)
-        result = _draw_date(result, entry["date"])
+        filename_date = _date_from_filename(src.name) if sort == "name" else None
+        display_date = filename_date if filename_date is not None else entry["date"]
+        if os.environ.get("EXPORT_DEBUG", "").strip().lower() in ("1", "true", "yes"):
+            result = _draw_debug_dates(result, src, sort, filename_date)
+        else:
+            result = _draw_date(result, display_date)
         dest = dest_dir / f"frame_{frame_idx:0{pad}d}{src.suffix.lower()}"
         try:
             result.save(dest, exif=exif_bytes)
@@ -232,7 +338,7 @@ def _export_all(images: list[dict], enabled_ops: set[str], op_params: dict, out_
     workers = min(int(os.environ.get("EXPORT_WORKERS", "4")), total)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(_process_one, entry, frame_idx, pad, enabled_ops, op_params, out_dir): entry
+            executor.submit(_process_one, entry, frame_idx, pad, enabled_ops, op_params, out_dir, sort): entry
             for entry, frame_idx, pad in tasks
         }
         for i, future in enumerate(as_completed(futures)):
@@ -295,7 +401,7 @@ def _create_video(images_dir: Path) -> None:
             continue
 
         list_file = images_dir.parent / f"_ffmpeg_{folder.name}.txt"
-        list_file.write_text("\n".join(f"file '{f}'" for f in frames))
+        list_file.write_text("\n".join(f"file '{f.resolve()}'" for f in frames))
         folder_video = images_dir.parent / f"{folder.name}.{ext}"
 
         result = _ffmpeg([
@@ -324,10 +430,10 @@ def _create_video(images_dir: Path) -> None:
     final = images_dir.parent / f"{name}.{ext}"
 
     if len(folder_videos) == 1:
-        folder_videos[0].rename(final)
+        shutil.copy2(folder_videos[0], final)
     else:
         merge_list = images_dir.parent / "_ffmpeg_merge.txt"
-        merge_list.write_text("\n".join(f"file '{v}'" for v in folder_videos))
+        merge_list.write_text("\n".join(f"file '{v.resolve()}'" for v in folder_videos))
 
         result = _ffmpeg([
             "ffmpeg", "-y",
@@ -493,6 +599,10 @@ with st.sidebar:
             key="export_sort",
         )
         _sort = _sort_options[_sort_label]
+        _debug_default = os.environ.get("EXPORT_DEBUG", "").strip().lower() in ("1", "true", "yes")
+        _debug = st.checkbox("Debug export mode", value=_debug_default, key="export_debug",
+                             help="Overlays all date metadata in green instead of the normal date stamp.")
+        os.environ["EXPORT_DEBUG"] = "1" if _debug else ""
         if st.button("⬇ Export all", width="stretch", type="primary"):
             _export_all(st.session_state.images, enabled_ops, op_params, _export_dir, _sort)
         if st.button("🎬 Create video", width="stretch"):
