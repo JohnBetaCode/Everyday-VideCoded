@@ -274,6 +274,17 @@ def _draw_debug_dates(img: Image.Image, src: Path, sort: str = "name",
 
 # ── Export helper ────────────────────────────────────────────────────────────
 
+def _crop_to_fit(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+    """Scale to cover target_w×target_h (aspect-ratio preserved), then center-crop."""
+    iw, ih = img.size
+    scale = max(target_w / iw, target_h / ih)
+    new_w, new_h = round(iw * scale), round(ih * scale)
+    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    left = (new_w - target_w) // 2
+    top = (new_h - target_h) // 2
+    return img.crop((left, top, left + target_w, top + target_h))
+
+
 def _sorted_entries(entries: list[dict], sort: str) -> list[dict]:
     if sort == "date_created":
         return sorted(entries, key=lambda e: e["date"])
@@ -295,6 +306,10 @@ def _process_one(
             frame = ImageOps.exif_transpose(orig).copy()
             exif_bytes = frame.info.get("exif", b"")
         result = run_pipeline(frame, enabled_ops, op_params)
+        _ew = os.environ.get("EXPORT_WIDTH", "").strip()
+        _eh = os.environ.get("EXPORT_HEIGHT", "").strip()
+        if _ew and _eh:
+            result = _crop_to_fit(result, int(_ew), int(_eh))
         filename_date = _date_from_filename(src.name) if sort == "name" else None
         display_date = filename_date if filename_date is not None else entry["date"]
         if os.environ.get("EXPORT_DEBUG", "").strip().lower() in ("1", "true", "yes"):
